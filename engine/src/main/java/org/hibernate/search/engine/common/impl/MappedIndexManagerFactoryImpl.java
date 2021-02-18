@@ -22,12 +22,12 @@ class MappedIndexManagerFactoryImpl implements MappedIndexManagerFactory {
 
 	@Override
 	public MappedIndexManagerBuilder createMappedIndexManager(IndexedEntityBindingMapperContext mapperContext,
-			Optional<String> backendName, String indexName,
+			Optional<String> backendName, Optional<String> loaderName, String indexName,
 			String mappedTypeName, boolean multiTenancyEnabled) {
 		return new MappedIndexManagerBuilderImpl(
 				mapperContext,
 				indexManagerBuildingStateHolder.getIndexManagerBuildingState(
-						backendName, indexName, mappedTypeName, multiTenancyEnabled
+						backendName, loaderName, indexName, mappedTypeName, multiTenancyEnabled
 				)
 		);
 	}

@@ -19,6 +19,7 @@ import org.hibernate.search.engine.backend.spi.BackendBuildContext;
 import org.hibernate.search.engine.backend.spi.BackendFactory;
 import org.hibernate.search.engine.backend.spi.BackendImplementor;
 import org.hibernate.search.engine.cfg.BackendSettings;
+import org.hibernate.search.engine.cfg.EntityLoadingSettings;
 import org.hibernate.search.engine.cfg.impl.ConfigurationPropertySourceExtractor;
 import org.hibernate.search.engine.cfg.impl.EngineConfigurationUtils;
 import org.hibernate.search.engine.cfg.spi.ConfigurationProperty;
@@ -30,6 +31,7 @@ import org.hibernate.search.engine.environment.bean.BeanResolver;
 import org.hibernate.search.engine.logging.impl.Log;
 import org.hibernate.search.engine.mapper.mapping.building.impl.IndexManagerBuildingState;
 import org.hibernate.search.engine.reporting.spi.EventContexts;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
@@ -44,6 +46,11 @@ class IndexManagerBuildingStateHolder {
 			ConfigurationProperty.forKey( BackendSettings.TYPE ).asBeanReference( BackendFactory.class )
 					.build();
 
+	private static final OptionalConfigurationProperty<BeanReference<? extends EntityLoadingFactory>> LOADING_TYPE =
+			ConfigurationProperty.forKey( EntityLoadingSettings.TYPE )
+			.asBeanReference( EntityLoadingFactory.class )
+					.build();
+
 	private final BeanResolver beanResolver;
 	private final ConfigurationPropertySource propertySource;
 	private final RootBuildContext rootBuildContext;
@@ -52,6 +59,8 @@ class IndexManagerBuildingStateHolder {
 	private final Map<String, BackendInitialBuildState> backendBuildStateByName = new LinkedHashMap<>();
 	// Use a LinkedHashMap for deterministic iteration
 	private final Map<String, IndexManagerInitialBuildState> indexManagerBuildStateByName = new LinkedHashMap<>();
+	// Use a LinkedHashMap for deterministic iteration
+	private final Map<String, EntityLoadingFactory> entityLoadingFactoriesByName = new LinkedHashMap<>();
 
 	IndexManagerBuildingStateHolder(BeanResolver beanResolver, ConfigurationPropertySource propertySource,
 			RootBuildContext rootBuildContext) {
@@ -76,10 +85,33 @@ class IndexManagerBuildingStateHolder {
 		}
 	}
 
-	IndexManagerBuildingState getIndexManagerBuildingState(Optional<String> backendName, String indexName,
+	void createEntityLoadings(Set<Optional<String>> loadingNames, Class<? extends EntityLoadingFactory> defaultFactoryType) {
+		for ( Optional<String> loaderNameOptional : loadingNames ) {
+			String loaderName = loaderNameOptional.orElse( null );
+			EventContext eventContext = EventContexts.fromEntityLoading( loaderName );
+
+			EntityLoadingFactory loadingFactory;
+			try {
+				loadingFactory = createEntityLoadingFactory( loaderNameOptional, defaultFactoryType, eventContext );
+			}
+			catch (RuntimeException e) {
+				rootBuildContext.getFailureCollector().withContext( eventContext ).add( e );
+				continue;
+			}
+			entityLoadingFactoriesByName.put( loaderName, loadingFactory );
+		}
+	}
+
+	IndexManagerBuildingState getIndexManagerBuildingState(Optional<String> backendName, Optional<String> loadingName, String indexName,
 			String mappedTypeName, boolean multiTenancyEnabled) {
+		EntityLoadingFactory entityLoadingFactory = getEntityLoadingFactory( loadingName.orElse( null ) );
 		return getBackend( backendName.orElse( null ) )
-				.createIndexManagerBuildingState( indexName, mappedTypeName, multiTenancyEnabled );
+				.createIndexManagerBuildingState( indexName, mappedTypeName, entityLoadingFactory, multiTenancyEnabled );
+	}
+
+	private EntityLoadingFactory getEntityLoadingFactory(String loadingName) {
+		EntityLoadingFactory continer = entityLoadingFactoriesByName.get( loadingName );
+		return continer;
 	}
 
 	private BackendInitialBuildState getBackend(String backendName) {
@@ -145,6 +177,46 @@ class IndexManagerBuildingStateHolder {
 		return referencesByName.values().iterator().next().resolve( beanResolver );
 	}
 
+	private EntityLoadingFactory createEntityLoadingFactory(Optional<String> loaderNameOptional,
+			Class<? extends EntityLoadingFactory> defaultFactoryType, EventContext eventContext) {
+			ConfigurationPropertySourceExtractor backendPropertySourceExtractor
+			= EngineConfigurationUtils.extractorForEntityLoaderStrategy( loaderNameOptional );
+		ConfigurationPropertySource loadingPropertySource = backendPropertySourceExtractor.extract( propertySource );
+
+		try ( BeanHolder<? extends EntityLoadingFactory> entityLoadingHolder =
+				LOADING_TYPE.<BeanHolder<? extends EntityLoadingFactory>>getAndMap( loadingPropertySource, beanResolver::resolve )
+						.orElseGet( () -> createDefaultEntityLoading( loaderNameOptional, defaultFactoryType, loadingPropertySource ) ) ) {
+
+			EntityLoadingFactory entityLoading = entityLoadingHolder.get();
+			if ( entityLoading != null ) {
+				entityLoading.configure( loadingPropertySource );
+			}
+
+			return entityLoading;
+		}
+	}
+
+	private BeanHolder<? extends EntityLoadingFactory> createDefaultEntityLoading(Optional<String> loaderNameOptional,
+			Class<? extends EntityLoadingFactory> defaultFactoryType, ConfigurationPropertySource strategyPropertySource) {
+		Map<String, BeanReference<EntityLoadingFactory>> referencesByName = beanResolver.namedConfiguredForRole( EntityLoadingFactory.class );
+		if ( referencesByName.isEmpty() ) {
+			if ( loaderNameOptional.isPresent() ) {
+				throw log.noEntityLoadingRegistered( LOADING_TYPE.resolveOrRaw( strategyPropertySource ) );
+			}
+			else if ( defaultFactoryType != null ) {
+				return beanResolver.resolve( BeanReference.of( defaultFactoryType ) );
+			}
+			else {
+				throw log.noBackendFactoryRegistered( LOADING_TYPE.resolveOrRaw( strategyPropertySource ) );
+			}
+		}
+		else if ( referencesByName.size() > 1 ) {
+			throw log.multipleEntityLoadingRegistered( LOADING_TYPE.resolveOrRaw( strategyPropertySource ),
+				referencesByName.keySet() );
+		}
+		return referencesByName.values().iterator().next().resolve( beanResolver );
+	}
+
 	class BackendInitialBuildState {
 		private final EventContext eventContext;
 		private final ConfigurationPropertySourceExtractor propertySourceExtractor;
@@ -162,7 +234,7 @@ class IndexManagerBuildingStateHolder {
 		}
 
 		IndexManagerInitialBuildState createIndexManagerBuildingState(
-				String indexName, String mappedTypeName, boolean multiTenancyEnabled) {
+				String indexName, String mappedTypeName, EntityLoadingFactory entityLoadingFactory, boolean multiTenancyEnabled) {
 			IndexManagerInitialBuildState state = indexManagerBuildStateByName.get( indexName );
 			if ( state != null ) {
 				throw log.twoTypesTargetSameIndex( indexName, state.mappedTypeName, mappedTypeName );
@@ -178,7 +250,7 @@ class IndexManagerBuildingStateHolder {
 			IndexSchemaRootNodeBuilder schemaRootNodeBuilder = builder.schemaRootNodeBuilder();
 
 			state = new IndexManagerInitialBuildState( indexName, mappedTypeName, indexPropertySourceExtractor,
-					builder, schemaRootNodeBuilder );
+					builder, schemaRootNodeBuilder, entityLoadingFactory );
 			indexManagerBuildStateByName.put( indexName, state );
 			return state;
 
@@ -200,18 +272,21 @@ class IndexManagerBuildingStateHolder {
 		private final ConfigurationPropertySourceExtractor propertySourceExtractor;
 		private final IndexManagerBuilder builder;
 		private final IndexSchemaRootNodeBuilder schemaRootNodeBuilder;
+		private final EntityLoadingFactory entityLoadingFactory;
 
 		private IndexManagerImplementor indexManager;
 
 		IndexManagerInitialBuildState(String indexName, String mappedTypeName,
 				ConfigurationPropertySourceExtractor propertySourceExtractor,
 				IndexManagerBuilder builder,
-				IndexSchemaRootNodeBuilder schemaRootNodeBuilder) {
+				IndexSchemaRootNodeBuilder schemaRootNodeBuilder,
+				EntityLoadingFactory entityLoadingFactory) {
 			this.indexName = indexName;
 			this.mappedTypeName = mappedTypeName;
 			this.propertySourceExtractor = propertySourceExtractor;
 			this.builder = builder;
 			this.schemaRootNodeBuilder = schemaRootNodeBuilder;
+			this.entityLoadingFactory = entityLoadingFactory;
 		}
 
 		void closeOnFailure(SuppressingCloser closer) {
@@ -252,6 +327,11 @@ class IndexManagerBuildingStateHolder {
 			}
 			return new IndexManagerNonStartedState( EventContexts.fromIndexName( indexName ),
 					propertySourceExtractor, indexManager );
+		}
+
+		@Override
+		public EntityLoadingFactory getEntityLoadingFactory() {
+			return entityLoadingFactory;
 		}
 	}
 

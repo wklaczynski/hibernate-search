@@ -8,7 +8,10 @@ package org.hibernate.search.mapper.javabean.impl;
 
 import java.lang.invoke.MethodHandles;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import org.hibernate.search.engine.mapper.mapping.building.spi.MappingBuildContext;
 import org.hibernate.search.mapper.javabean.log.impl.Log;
@@ -29,6 +32,7 @@ class JavaBeanTypeConfigurationContributor implements PojoMappingConfigurationCo
 	// Use a LinkedHashMap for deterministic iteration
 	private final Map<Class<?>, String> entityNameByType = new LinkedHashMap<>();
 	private final Map<String, Class<?>> entityTypeByName = new LinkedHashMap<>();
+	private final Set<Optional<String>> loaderNames = new LinkedHashSet<>();
 
 	public JavaBeanTypeConfigurationContributor(JavaBeanBootstrapIntrospector introspector) {
 		this.introspector = introspector;

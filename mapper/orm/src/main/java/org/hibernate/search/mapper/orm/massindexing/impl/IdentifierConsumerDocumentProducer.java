@@ -6,10 +6,10 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeGroup;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import javax.persistence.LockModeType;
 import javax.transaction.NotSupportedException;
 import javax.transaction.SystemException;
 import javax.transaction.TransactionManager;
@@ -19,16 +19,18 @@ import org.hibernate.FlushMode;
 import org.hibernate.Session;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.transaction.jta.platform.spi.JtaPlatform;
-import org.hibernate.query.Query;
 import org.hibernate.search.engine.backend.work.execution.DocumentCommitStrategy;
 import org.hibernate.search.engine.backend.work.execution.DocumentRefreshStrategy;
 import org.hibernate.search.mapper.orm.logging.impl.Log;
 import org.hibernate.search.mapper.orm.scope.impl.HibernateOrmScopeSessionContext;
-import org.hibernate.search.mapper.pojo.model.spi.PojoRawTypeIdentifier;
 import org.hibernate.search.mapper.pojo.work.spi.PojoIndexer;
+import org.hibernate.search.util.common.logging.impl.LoggerFactory;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeBatchLoader;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeBatchingContext;
+import org.hibernate.search.mapper.pojo.model.spi.PojoRawTypeIdentifier;
 import org.hibernate.search.util.common.impl.Futures;
 import org.hibernate.search.util.common.impl.Throwables;
-import org.hibernate.search.util.common.logging.impl.LoggerFactory;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingMappingContext;
 
 /**
  * This {@code SessionAwareRunnable} is consuming entity identifiers and
@@ -46,14 +48,12 @@ public class IdentifierConsumerDocumentProducer<E, I> implements Runnable {
 
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	private static final String ID_PARAMETER_NAME = "ids";
-
-	private final HibernateOrmMassIndexingMappingContext mappingContext;
+	private final MassIndexingMappingContext mappingContext;
 	private final String tenantId;
+	private final HibernateOrmMassIndexingTypeIndexer<E, I> typeIndexer;
 	private final MassIndexingNotifier notifier;
 
 	private final MassIndexingIndexedTypeGroup<E, I> typeGroup;
-	private final MassIndexingTypeGroupLoader<? super E, I> typeGroupLoader;
 
 	private final ProducerConsumerQueue<List<I>> source;
 	private final CacheMode cacheMode;
@@ -65,19 +65,20 @@ public class IdentifierConsumerDocumentProducer<E, I> implements Runnable {
 	private final TransactionManager transactionManager;
 
 	IdentifierConsumerDocumentProducer(
-			HibernateOrmMassIndexingMappingContext mappingContext, String tenantId,
+			MassIndexingMappingContext mappingContext,
+			String tenantId,
+			HibernateOrmMassIndexingTypeIndexer<E, I> typeIndexer,
 			MassIndexingNotifier notifier,
 			MassIndexingIndexedTypeGroup<E, I> typeGroup,
-			MassIndexingTypeGroupLoader<? super E, I> typeGroupLoader,
 			ProducerConsumerQueue<List<I>> fromIdentifierListToEntities,
 			CacheMode cacheMode,
 			Integer transactionTimeout
 			) {
 		this.mappingContext = mappingContext;
 		this.tenantId = tenantId;
+		this.typeIndexer = typeIndexer;
 		this.notifier = notifier;
 		this.typeGroup = typeGroup;
-		this.typeGroupLoader = typeGroupLoader;
 		this.source = fromIdentifierListToEntities;
 		this.cacheMode = cacheMode;
 		this.transactionTimeout = transactionTimeout;
@@ -136,16 +137,9 @@ public class IdentifierConsumerDocumentProducer<E, I> implements Runnable {
 		SessionImplementor session = sessionContext.session();
 		try {
 			beginTransaction( session );
-
-			Query<? super E> query = typeGroupLoader.createLoadingQuery( session, ID_PARAMETER_NAME )
-					.setParameter( ID_PARAMETER_NAME, listIds )
-					.setCacheMode( cacheMode )
-					.setLockMode( LockModeType.NONE )
-					.setCacheable( false )
-					.setHibernateFlushMode( FlushMode.MANUAL )
-					.setFetchSize( listIds.size() );
-
-			indexList( sessionContext, indexer, query.getResultList() );
+			MassIndexingTypeBatchLoader<E, I> loader = typeIndexer.indexTypeBatchLoader();
+			List<? super E> result = loader.load( new BatchingContext( session ), listIds );
+			indexList( sessionContext, indexer, result );
 			session.clear();
 		}
 		finally {
@@ -167,6 +161,7 @@ public class IdentifierConsumerDocumentProducer<E, I> implements Runnable {
 		}
 	}
 
+	@SuppressWarnings("UseSpecificCatch")
 	private void rollbackTransaction(SessionImplementor session) {
 		try {
 			if ( transactionManager != null ) {
@@ -256,4 +251,21 @@ public class IdentifierConsumerDocumentProducer<E, I> implements Runnable {
 		return sessionContext.runtimeIntrospector().detectEntityType( entity );
 	}
 
+	private class BatchingContext implements MassIndexingTypeBatchingContext {
+		private final SessionImplementor session;
+
+		public BatchingContext(SessionImplementor session) {
+			this.session = session;
+		}
+
+		@Override
+		public CacheMode cacheMode() {
+			return cacheMode;
+		}
+
+		@Override
+		public SessionImplementor session() {
+			return session;
+		}
+	}
 }

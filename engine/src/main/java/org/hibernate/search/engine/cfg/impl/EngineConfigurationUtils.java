@@ -27,6 +27,16 @@ public final class EngineConfigurationUtils {
 		}
 	}
 
+	public static ConfigurationPropertySourceExtractor extractorForEntityLoaderStrategy(Optional<String> loaderNameOptional) {
+		if ( !loaderNameOptional.isPresent() ) {
+			return engineSource -> engineSource.withMask( EngineSettings.Radicals.LOADING );
+		}
+		else {
+			return engineSource -> engineSource.withMask( EngineSettings.Radicals.LOADINGS )
+				.withMask( loaderNameOptional.get() );
+		}
+	}
+
 	public static ConfigurationPropertySourceExtractor extractorForIndex(
 			ConfigurationPropertySourceExtractor extractorForBackend, String indexName) {
 		return engineSource -> {

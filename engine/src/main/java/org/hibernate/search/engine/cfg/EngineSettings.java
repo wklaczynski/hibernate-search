@@ -9,6 +9,7 @@ package org.hibernate.search.engine.cfg;
 import org.hibernate.search.engine.environment.bean.BeanReference;
 import org.hibernate.search.engine.reporting.FailureHandler;
 import org.hibernate.search.engine.reporting.impl.LogFailureHandler;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 
 /**
  * Configuration properties for the Hibernate Search engine.
@@ -59,6 +60,16 @@ public final class EngineSettings {
 	public static final String BACKGROUND_FAILURE_HANDLER = PREFIX + Radicals.BACKGROUND_FAILURE_HANDLER;
 
 	/**
+	 * The root property for properties of the default entity loading strategy, e.g. "hibernate.search.loading.type = {@link EntityLoadingFactory}".
+	 */
+	public static final String LOADING = PREFIX + Radicals.LOADING;
+
+	/**
+	 * The root property for properties of named entity loading strategy, e.g. "hibernate.search.loadings.myStrategy.type = {@link EntityLoadingFactory}".
+	 */
+	public static final String LOADINGS = PREFIX + Radicals.LOADINGS;
+
+	/**
 	 * Configuration property keys without the {@link #PREFIX prefix}.
 	 */
 	public static class Radicals {
@@ -68,6 +79,8 @@ public final class EngineSettings {
 
 		public static final String BACKEND = "backend";
 		public static final String BACKENDS = "backends";
+		public static final String LOADING = "loading";
+		public static final String LOADINGS = "loadings";
 		public static final String CONFIGURATION_PROPERTY_CHECKING_STRATEGY = "configuration_property_checking.strategy";
 		public static final String BACKGROUND_FAILURE_HANDLER = "background_failure_handler";
 	}

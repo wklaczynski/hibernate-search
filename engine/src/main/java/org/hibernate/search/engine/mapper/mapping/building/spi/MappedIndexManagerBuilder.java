@@ -7,6 +7,7 @@
 package org.hibernate.search.engine.mapper.mapping.building.spi;
 
 import org.hibernate.search.engine.mapper.mapping.spi.MappedIndexManager;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 
 /**
  * A builder for {@link org.hibernate.search.engine.mapper.mapping.spi.MappedIndexManager} instances,
@@ -18,6 +19,8 @@ import org.hibernate.search.engine.mapper.mapping.spi.MappedIndexManager;
 public interface MappedIndexManagerBuilder {
 
 	String indexName();
+
+	EntityLoadingFactory getEntityLoadingFactory();
 
 	IndexedEntityBindingContext rootBindingContext();
 

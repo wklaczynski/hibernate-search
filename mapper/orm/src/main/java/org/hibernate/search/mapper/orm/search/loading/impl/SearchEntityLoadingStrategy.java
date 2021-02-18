@@ -9,29 +9,19 @@ package org.hibernate.search.mapper.orm.search.loading.impl;
 import java.util.List;
 
 import org.hibernate.engine.spi.SessionImplementor;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingStrategy;
+import org.hibernate.search.mapper.orm.common.EntityReference;
 import org.hibernate.search.mapper.orm.search.loading.EntityLoadingCacheLookupStrategy;
 
-public interface SearchEntityLoadingStrategy {
+public interface SearchEntityLoadingStrategy extends EntityLoadingStrategy {
 
-	/**
-	 * @param obj Another strategy
-	 * @return {@code true} if the other strategy returns the same type of loaders,
-	 * able to target the exact same entity types.
-	 * {@code false} otherwise or when unsure.
-	 */
-	boolean equals(Object obj);
-
-	/*
-	 * Hashcode must be overridden to be consistent with equals.
-	 */
-	int hashCode();
-
-	<E> HibernateOrmComposableSearchEntityLoader<E> createLoader(
+	<E> EntityLoader<EntityReference, E> createLoader(
 			SearchLoadingIndexedTypeContext targetEntityTypeContext,
 			SessionImplementor session, EntityLoadingCacheLookupStrategy cacheLookupStrategy,
 			MutableEntityLoadingOptions loadingOptions);
 
-	<E> HibernateOrmComposableSearchEntityLoader<? extends E> createLoader(
+	<E> EntityLoader<EntityReference, E> createLoader(
 			List<SearchLoadingIndexedTypeContext> targetEntityTypeContexts,
 			SessionImplementor session, EntityLoadingCacheLookupStrategy cacheLookupStrategy,
 			MutableEntityLoadingOptions loadingOptions);

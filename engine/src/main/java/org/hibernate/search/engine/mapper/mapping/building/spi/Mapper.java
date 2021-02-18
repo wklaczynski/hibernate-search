@@ -31,16 +31,17 @@ public interface Mapper<MPBS extends MappingPartialBuildState> {
 	 * Called exactly once just before {@link #mapIndexedTypes(MappedIndexManagerFactory)}.
 	 *
 	 * @param backendNameCollector A collector of backend names, {@code Optional.empty()} means "the default backend".
+	 * @param loaderNameCollector A collector of backend names, {@code Optional.empty()} means "the default loading".
 	 */
-	void prepareIndexedTypes(Consumer<Optional<String>> backendNameCollector);
+	void prepareIndexedTypes(Consumer<Optional<String>> backendNameCollector, Consumer<Optional<String>> loaderNameCollector);
 
 	/**
 	 * Begin the creation of a mapping for all indexed types.
 	 * <p>
-	 * Called exactly once just after {@link #prepareIndexedTypes(Consumer)} and before {@link #prepareBuild()}.
+	 * Called exactly once just after {@link #prepareIndexedTypes(Consumer,Consumer)} and before {@link #prepareBuild()}.
 	 *
 	 * @param indexManagerFactory A factory for index managers,
-	 * supporting all the backends declared in {@link #prepareIndexedTypes(Consumer)}.
+	 * supporting all the backends declared in {@link #prepareIndexedTypes(Consumer,Consumer)}.
 	 */
 	void mapIndexedTypes(MappedIndexManagerFactory indexManagerFactory);
 

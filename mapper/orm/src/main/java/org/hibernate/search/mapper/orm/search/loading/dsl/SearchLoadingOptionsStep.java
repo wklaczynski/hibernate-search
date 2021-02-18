@@ -11,7 +11,6 @@ import java.util.function.Consumer;
 import javax.persistence.EntityGraph;
 
 import org.hibernate.graph.GraphSemantic;
-import org.hibernate.query.Query;
 import org.hibernate.search.mapper.orm.search.loading.EntityLoadingCacheLookupStrategy;
 
 /**
@@ -29,9 +28,17 @@ public interface SearchLoadingOptionsStep {
 	 *
 	 * @param fetchSize The fetch size. Must be positive or zero.
 	 * @return {@code this} for method chaining.
-	 * @see Query#setFetchSize(int)
 	 */
 	SearchLoadingOptionsStep fetchSize(int fetchSize);
+
+	/**
+	 * Set the option for entity loader before loader are loaded.
+	 *
+	 * @param name The param name.
+	 * @param value The param value.
+	 * @return {@code this} for method chaining.
+	 */
+	SearchLoadingOptionsStep option(String name, Object value);
 
 	/**
 	 * Set the strategy for cache lookup before query results are loaded.

@@ -36,7 +36,7 @@ public class SearchEntityLoaderBuilder<E> {
 		this.cacheLookupStrategy = cacheLookupStrategy;
 	}
 
-	public EntityLoader<EntityReference, ? extends E> build(MutableEntityLoadingOptions mutableLoadingOptions) {
+	public EntityLoader<EntityReference, E> build(MutableEntityLoadingOptions mutableLoadingOptions) {
 		if ( concreteIndexedTypes.size() == 1 ) {
 			SearchLoadingIndexedTypeContext typeContext = concreteIndexedTypes.iterator().next();
 			return createForSingleType( typeContext, mutableLoadingOptions );
@@ -51,7 +51,7 @@ public class SearchEntityLoaderBuilder<E> {
 		Map<SearchEntityLoadingStrategy, List<SearchLoadingIndexedTypeContext>> typesBySearchEntityLoadingStrategy =
 				new HashMap<>( concreteIndexedTypes.size() );
 		for ( SearchLoadingIndexedTypeContext typeContext : concreteIndexedTypes ) {
-			SearchEntityLoadingStrategy loadingStrategyForType = typeContext.loadingStrategy();
+			SearchEntityLoadingStrategy loadingStrategyForType = (SearchEntityLoadingStrategy) typeContext.loadingStrategy();
 			typesBySearchEntityLoadingStrategy.computeIfAbsent( loadingStrategyForType, ignored -> new ArrayList<>() )
 					.add( typeContext );
 		}
@@ -68,13 +68,13 @@ public class SearchEntityLoaderBuilder<E> {
 			return createForMultipleTypes( loadingStrategy, types, mutableLoadingOptions );
 		}
 		else {
-			Map<String, HibernateOrmComposableSearchEntityLoader<? extends E>> delegateByEntityName =
+			Map<String, EntityLoader<EntityReference, E>> delegateByEntityName =
 					new HashMap<>( concreteIndexedTypes.size() );
 			for ( Map.Entry<SearchEntityLoadingStrategy, List<SearchLoadingIndexedTypeContext>> entry :
 					typesBySearchEntityLoadingStrategy.entrySet() ) {
 				SearchEntityLoadingStrategy loadingStrategy = entry.getKey();
 				List<SearchLoadingIndexedTypeContext> types = entry.getValue();
-				HibernateOrmComposableSearchEntityLoader<? extends E> loader =
+				EntityLoader<EntityReference, E> loader =
 						createForMultipleTypes( loadingStrategy, types, mutableLoadingOptions );
 				for ( SearchLoadingIndexedTypeContext type : types ) {
 					delegateByEntityName.put( type.jpaEntityName(), loader );
@@ -84,10 +84,11 @@ public class SearchEntityLoaderBuilder<E> {
 		}
 	}
 
-	private HibernateOrmComposableSearchEntityLoader<? extends E> createForSingleType(
+	private EntityLoader<EntityReference, E> createForSingleType(
 			SearchLoadingIndexedTypeContext typeContext,
 			MutableEntityLoadingOptions mutableLoadingOptions) {
-		return typeContext.loadingStrategy().createLoader(
+		SearchEntityLoadingStrategy loadingStrategyForType = (SearchEntityLoadingStrategy) typeContext.loadingStrategy();
+		return loadingStrategyForType.createLoader(
 				typeContext,
 				session,
 				cacheLookupStrategy,
@@ -95,7 +96,7 @@ public class SearchEntityLoaderBuilder<E> {
 		);
 	}
 
-	private HibernateOrmComposableSearchEntityLoader<? extends E> createForMultipleTypes(
+	private EntityLoader<EntityReference, E> createForMultipleTypes(
 			SearchEntityLoadingStrategy loadingStrategy,
 			List<SearchLoadingIndexedTypeContext> types,
 			MutableEntityLoadingOptions mutableLoadingOptions) {

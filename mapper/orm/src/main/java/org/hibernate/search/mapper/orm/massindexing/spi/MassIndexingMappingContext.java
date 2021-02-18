@@ -4,7 +4,7 @@
  * License: GNU Lesser General Public License (LGPL), version 2.1 or later
  * See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
  */
-package org.hibernate.search.mapper.orm.massindexing.impl;
+package org.hibernate.search.mapper.orm.massindexing.spi;
 
 import javax.persistence.EntityManager;
 
@@ -13,7 +13,7 @@ import org.hibernate.search.engine.reporting.FailureHandler;
 import org.hibernate.search.mapper.orm.scope.impl.HibernateOrmScopeSessionContext;
 import org.hibernate.search.engine.environment.thread.spi.ThreadPoolProvider;
 
-public interface HibernateOrmMassIndexingMappingContext {
+public interface MassIndexingMappingContext {
 
 	SessionFactoryImplementor sessionFactory();
 

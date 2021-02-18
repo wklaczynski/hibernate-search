@@ -6,17 +6,15 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeGroup;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
 import java.util.List;
 
-import org.hibernate.ScrollMode;
-import org.hibernate.ScrollableResults;
 import org.hibernate.SessionFactory;
 import org.hibernate.StatelessSession;
 import org.hibernate.Transaction;
+import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.query.Query;
 import org.hibernate.search.mapper.orm.logging.impl.Log;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
 
@@ -40,33 +38,25 @@ public class IdentifierProducer<E, I> implements StatelessSessionAwareRunnable {
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
 	private final SessionFactory sessionFactory;
+	private final HibernateOrmMassIndexingTypeIndexer<E, I> typeIndexer;
 	private final MassIndexingNotifier notifier;
 	private final String tenantId;
 
 	private final MassIndexingIndexedTypeGroup<E, I> typeGroup;
-	private final MassIndexingTypeGroupLoader<? super E, I> typeGroupLoader;
 
 	private final ProducerConsumerQueue<List<I>> destination;
-	private final int batchSize;
-	private final long objectsLimit;
-	private final int idFetchSize;
 
 	IdentifierProducer(SessionFactory sessionFactory, String tenantId,
+			HibernateOrmMassIndexingTypeIndexer<E, I> typeIndexer,
 			MassIndexingNotifier notifier,
 			MassIndexingIndexedTypeGroup<E, I> typeGroup,
-			MassIndexingTypeGroupLoader<? super E, I> typeGroupLoader,
-			ProducerConsumerQueue<List<I>> destination,
-			int objectLoadingBatchSize,
-			long objectsLimit, int idFetchSize) {
+			ProducerConsumerQueue<List<I>> destination) {
 		this.sessionFactory = sessionFactory;
 		this.tenantId = tenantId;
+		this.typeIndexer = typeIndexer;
 		this.notifier = notifier;
 		this.typeGroup = typeGroup;
-		this.typeGroupLoader = typeGroupLoader;
 		this.destination = destination;
-		this.batchSize = objectLoadingBatchSize;
-		this.objectsLimit = objectsLimit;
-		this.idFetchSize = idFetchSize;
 		log.trace( "created" );
 	}
 
@@ -96,13 +86,13 @@ public class IdentifierProducer<E, I> implements StatelessSessionAwareRunnable {
 			}
 		}
 		try {
-			Transaction transaction = ( (SharedSessionContractImplementor) session ).accessTransaction();
-			final boolean controlTransactions = ! transaction.isActive();
+			Transaction transaction = ((SharedSessionContractImplementor) session).accessTransaction();
+			final boolean controlTransactions = !transaction.isActive();
 			if ( controlTransactions ) {
 				transaction.begin();
 			}
 			try {
-				loadAllIdentifiers( (SharedSessionContractImplementor) session );
+				typeIndexer.loadAllIdentifiers( (SessionImplementor) session );
 			}
 			finally {
 				if ( controlTransactions ) {
@@ -118,60 +108,6 @@ public class IdentifierProducer<E, I> implements StatelessSessionAwareRunnable {
 			if ( upperSession == null ) {
 				session.close();
 			}
-		}
-	}
-
-	private void loadAllIdentifiers(final SharedSessionContractImplementor session) throws InterruptedException {
-		long totalCount = createTotalCountQuery( session ).uniqueResult();
-		if ( objectsLimit != 0 && objectsLimit < totalCount ) {
-			totalCount = objectsLimit;
-		}
-		if ( log.isDebugEnabled() ) {
-			log.debugf( "going to fetch %d primary keys", (Long) totalCount );
-		}
-		notifier.notifyAddedTotalCount( totalCount );
-
-		ArrayList<I> destinationList = new ArrayList<>( batchSize );
-		long counter = 0;
-		try ( ScrollableResults results = createIdentifiersQuery( session ).scroll( ScrollMode.FORWARD_ONLY ) ) {
-			while ( results.next() ) {
-				@SuppressWarnings("unchecked")
-				I id = (I) results.get( 0 );
-				destinationList.add( id );
-				if ( destinationList.size() == batchSize ) {
-					// Explicitly checking whether the TX is still open; Depending on the driver implementation new ids
-					// might be produced otherwise if the driver fetches all rows up-front
-					if ( !session.isTransactionInProgress() ) {
-						throw log.transactionNotActiveWhileProducingIdsForBatchIndexing( typeGroup.includedEntityNames() );
-					}
-
-					enqueueList( destinationList );
-					destinationList = new ArrayList<>( batchSize );
-				}
-				counter++;
-				if ( counter == totalCount ) {
-					break;
-				}
-			}
-		}
-		enqueueList( destinationList );
-	}
-
-	private Query<Long> createTotalCountQuery(SharedSessionContractImplementor session) {
-		return typeGroupLoader.createCountQuery( session )
-				.setCacheable( false );
-	}
-
-	private Query<I> createIdentifiersQuery(SharedSessionContractImplementor session) {
-		return typeGroupLoader.createIdentifiersQuery( session )
-				.setCacheable( false )
-				.setFetchSize( idFetchSize );
-	}
-
-	private void enqueueList(final List<I> idsList) throws InterruptedException {
-		if ( ! idsList.isEmpty() ) {
-			destination.put( idsList );
-			log.tracef( "produced a list of ids %s", idsList );
 		}
 	}
 

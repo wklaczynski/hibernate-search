@@ -6,11 +6,11 @@
  */
 package org.hibernate.search.mapper.orm.scope.impl;
 
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingStrategy;
 import org.hibernate.search.mapper.orm.entity.SearchIndexedEntity;
-import org.hibernate.search.mapper.orm.loading.impl.EntityLoadingStrategy;
-import org.hibernate.search.mapper.orm.massindexing.impl.HibernateOrmMassIndexingIndexedTypeContext;
 import org.hibernate.search.mapper.orm.search.loading.impl.SearchLoadingIndexedTypeContext;
 import org.hibernate.search.mapper.pojo.scope.spi.PojoScopeDelegate;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeContext;
 
 /**
  * A mapper-specific indexed type context,
@@ -21,9 +21,9 @@ import org.hibernate.search.mapper.pojo.scope.spi.PojoScopeDelegate;
  */
 public interface HibernateOrmScopeIndexedTypeContext<E>
 		extends SearchIndexedEntity<E>, HibernateOrmScopeTypeContext<E>, SearchLoadingIndexedTypeContext,
-				HibernateOrmMassIndexingIndexedTypeContext<E> {
+				MassIndexingIndexedTypeContext<E> {
 
 	@Override
-	EntityLoadingStrategy<? super E, ?> loadingStrategy();
+	EntityLoadingStrategy loadingStrategy();
 
 }

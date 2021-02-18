@@ -7,6 +7,8 @@
 package org.hibernate.search.mapper.orm.search.loading.context.impl;
 
 import java.lang.invoke.MethodHandles;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 import javax.persistence.EntityGraph;
@@ -39,12 +41,12 @@ public final class HibernateOrmLoadingContext<E> implements LoadingContext<Entit
 
 	private final SessionImplementor sessionImplementor;
 	private final DocumentReferenceConverter<EntityReference> referenceHitMapper;
-	private final EntityLoader<EntityReference, ? extends E> entityLoader;
+	private final EntityLoader<EntityReference, E> entityLoader;
 	private final MutableEntityLoadingOptions loadingOptions;
 
 	private HibernateOrmLoadingContext(SessionImplementor sessionImplementor,
 			DocumentReferenceConverter<EntityReference> referenceHitMapper,
-			EntityLoader<EntityReference, ? extends E> entityLoader,
+			EntityLoader<EntityReference, E> entityLoader,
 			MutableEntityLoadingOptions loadingOptions) {
 		this.sessionImplementor = sessionImplementor;
 		this.referenceHitMapper = referenceHitMapper;
@@ -77,13 +79,14 @@ public final class HibernateOrmLoadingContext<E> implements LoadingContext<Entit
 		private final SearchLoadingSessionContext sessionContext;
 		private final SearchEntityLoaderBuilder<E> entityLoaderBuilder;
 		private final MutableEntityLoadingOptions loadingOptions;
+		private final Map<String, Object> options = new LinkedHashMap<>();
 
 		public Builder(SearchLoadingMappingContext mappingContext,
 				SearchLoadingSessionContext sessionContext,
 				Set<HibernateOrmScopeIndexedTypeContext<? extends E>> indexedTypeContexts) {
 			this.sessionContext = sessionContext;
 			this.entityLoaderBuilder = new SearchEntityLoaderBuilder<>( mappingContext, sessionContext, indexedTypeContexts );
-			this.loadingOptions = new MutableEntityLoadingOptions( mappingContext );
+			this.loadingOptions = new MutableEntityLoadingOptions( mappingContext, options );
 		}
 
 		@Override
@@ -94,6 +97,12 @@ public final class HibernateOrmLoadingContext<E> implements LoadingContext<Entit
 		@Override
 		public SearchLoadingOptionsStep fetchSize(int fetchSize) {
 			loadingOptions.fetchSize( fetchSize );
+			return this;
+		}
+
+		@Override
+		public SearchLoadingOptionsStep option(String name, Object value) {
+			options.put( name, value );
 			return this;
 		}
 
@@ -118,7 +127,7 @@ public final class HibernateOrmLoadingContext<E> implements LoadingContext<Entit
 		@Override
 		public LoadingContext<EntityReference, E> build() {
 			DocumentReferenceConverter<EntityReference> referenceHitMapper = sessionContext.referenceHitMapper();
-			EntityLoader<EntityReference, ? extends E> entityLoader = entityLoaderBuilder.build( loadingOptions );
+			EntityLoader<EntityReference, E> entityLoader = entityLoaderBuilder.build( loadingOptions );
 			return new HibernateOrmLoadingContext<>(
 					sessionContext.session(),
 					referenceHitMapper, entityLoader,

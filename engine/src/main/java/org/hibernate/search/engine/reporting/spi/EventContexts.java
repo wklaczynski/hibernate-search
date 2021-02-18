@@ -26,6 +26,8 @@ public class EventContexts {
 
 	private static final EventContext DEFAULT_BACKEND = singleton( MESSAGES::defaultBackend );
 
+	private static final EventContext DEFAULT_ENTITY_LOADING = singleton( MESSAGES::defaultEntityLoading );
+
 	private static final EventContext INDEX_SCHEMA_ROOT = singleton( MESSAGES::indexSchemaRoot );
 
 	private EventContexts() {
@@ -86,6 +88,20 @@ public class EventContexts {
 				@Override
 				public String render(String param) {
 					return MESSAGES.backend( param );
+				}
+			} );
+		}
+	}
+
+	public static EventContext fromEntityLoading(String name) {
+		if ( name == null ) {
+			return DEFAULT_ENTITY_LOADING;
+		}
+		else {
+			return EventContext.create( new AbstractSimpleEventContextElement<String>( name ) {
+				@Override
+				public String render(String param) {
+					return MESSAGES.loading( param );
 				}
 			} );
 		}

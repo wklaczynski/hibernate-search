@@ -11,6 +11,7 @@ import org.hibernate.search.engine.mapper.mapping.building.spi.IndexedEntityBind
 import org.hibernate.search.engine.mapper.mapping.building.spi.MappedIndexManagerBuilder;
 import org.hibernate.search.engine.mapper.mapping.impl.MappedIndexManagerImpl;
 import org.hibernate.search.engine.mapper.mapping.spi.MappedIndexManager;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 
 public class MappedIndexManagerBuilderImpl implements MappedIndexManagerBuilder {
 	private final IndexedEntityBindingContextImpl bindingContext;
@@ -27,6 +28,11 @@ public class MappedIndexManagerBuilderImpl implements MappedIndexManagerBuilder 
 	@Override
 	public String indexName() {
 		return indexManagerBuildingState.getIndexName();
+	}
+
+	@Override
+	public EntityLoadingFactory getEntityLoadingFactory() {
+		return indexManagerBuildingState.getEntityLoadingFactory();
 	}
 
 	@Override

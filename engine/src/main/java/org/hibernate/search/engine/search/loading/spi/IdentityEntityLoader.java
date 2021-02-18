@@ -7,6 +7,7 @@
 package org.hibernate.search.engine.search.loading.spi;
 
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.search.engine.common.timing.spi.Deadline;
 
@@ -20,7 +21,9 @@ class IdentityEntityLoader<E> implements EntityLoader<E, E> {
 	}
 
 	@Override
-	public List<E> loadBlocking(List<E> references, Deadline timeoutManager) {
-		return references;
+	public void loadBlocking(List<E> references, Map<E, E> entitiesByReference, Deadline deadline) {
+		for ( E reference : references ) {
+			entitiesByReference.put( reference, reference );
+		}
 	}
 }

@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,8 +70,14 @@ public final class MapperMockUtils {
 
 		Set<R> keysToLoad = context.loadingMap.keySet();
 		if ( !keysToLoad.isEmpty() ) {
-			when( objectLoaderMock.loadBlocking(
-					MockUtils.collectionAnyOrderMatcher( new ArrayList<>( keysToLoad ) ), any() ) )
+			ArrayList<R> references = MockUtils.collectionAnyOrderMatcher( new ArrayList<>( keysToLoad ) );
+			LinkedHashMap<R, E> objectsByReference = new LinkedHashMap<>( references.size() );
+			objectLoaderMock.loadBlocking( references, objectsByReference, any() );
+			ArrayList<E> loadedObjects = new ArrayList<>( references.size() );
+			for ( R reference : references ) {
+				loadedObjects.add( objectsByReference.get( reference ) );
+			}
+			when( loadedObjects )
 					.thenAnswer( invocationOnMock -> invocationOnMock.<List<R>>getArgument( 0 ).stream()
 							.map( context.loadingMap::get )
 							.collect( Collectors.toList() ) );

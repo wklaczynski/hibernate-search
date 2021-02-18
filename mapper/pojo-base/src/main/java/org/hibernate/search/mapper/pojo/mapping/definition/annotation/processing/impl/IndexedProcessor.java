@@ -31,8 +31,12 @@ public class IndexedProcessor implements TypeMappingAnnotationProcessor<Indexed>
 		if ( backendName.isEmpty() ) {
 			backendName = null;
 		}
-		TypeMappingIndexedStep indexedStep = mappingContext.indexed().backend( backendName ).index( indexName )
-				.enabled( annotation.enabled() );
+		String loadingName = annotation.loading();
+		if ( loadingName.isEmpty() ) {
+			loadingName = null;
+		}
+		TypeMappingIndexedStep indexedStep = mappingContext.indexed().backend( backendName ).loading( loadingName )
+				.index( indexName ).enabled( annotation.enabled() );
 
 		RoutingBinderRef routingBinderReferenceAnnotation = annotation.routingBinder();
 		Optional<BeanReference<? extends RoutingBinder>> routingBinderReference = context.toBeanReference(

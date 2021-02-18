@@ -7,6 +7,7 @@
 package org.hibernate.search.mapper.orm.search.loading.impl;
 
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingStrategy;
 
 public interface SearchLoadingIndexedTypeContext {
 
@@ -20,6 +21,6 @@ public interface SearchLoadingIndexedTypeContext {
 	 */
 	EntityPersister entityPersister();
 
-	SearchEntityLoadingStrategy loadingStrategy();
+	EntityLoadingStrategy loadingStrategy();
 
 }

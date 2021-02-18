@@ -7,54 +7,85 @@
 package org.hibernate.search.mapper.javabean.search.loading.impl;
 
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.hibernate.search.engine.backend.common.DocumentReference;
 import org.hibernate.search.engine.backend.common.spi.DocumentReferenceConverter;
 import org.hibernate.search.engine.search.loading.spi.LoadingResult;
 import org.hibernate.search.engine.search.loading.spi.ProjectionHitMapper;
-import org.hibernate.search.mapper.javabean.common.EntityReference;
 import org.hibernate.search.mapper.javabean.log.impl.Log;
-import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.engine.common.timing.spi.Deadline;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
+import org.hibernate.search.util.common.impl.CollectionHelper;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
 
-public class JavaBeanProjectionHitMapper implements ProjectionHitMapper<EntityReference, Void> {
+public class JavaBeanProjectionHitMapper<R, E> implements ProjectionHitMapper<R, E> {
 
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	private final DocumentReferenceConverter<EntityReference> documentReferenceConverter;
+	private final DocumentReferenceConverter<R> documentReferenceConverter;
+	private final EntityLoader<R, E> objectLoader;
 
-	public JavaBeanProjectionHitMapper(DocumentReferenceConverter<EntityReference> documentReferenceConverter) {
+	private final List<DocumentReference> referencesToLoad = new ArrayList<>();
+
+	public JavaBeanProjectionHitMapper(DocumentReferenceConverter<R> documentReferenceConverter,
+			EntityLoader<R, E> objectLoader) {
 		this.documentReferenceConverter = documentReferenceConverter;
+		this.objectLoader = objectLoader;
 	}
 
 	@Override
 	public Object planLoading(DocumentReference reference) {
-		throw log.cannotLoadEntity( reference );
+		referencesToLoad.add( reference );
+		return referencesToLoad.size() - 1;
 	}
 
 	@Override
-	public LoadingResult<EntityReference, Void> loadBlocking(Deadline deadline) {
-		return new JavaBeanUnusuableGetLoadingResult( documentReferenceConverter );
+	public LoadingResult<R, E> loadBlocking(Deadline deadline) {
+		List<E> loadedObjects;
+		if ( referencesToLoad.isEmpty() ) {
+			// Avoid the call to the objectLoader:
+			// it may be expensive even if there are no references to load.
+			loadedObjects = Collections.emptyList();
+		}
+		else {
+			List<R> converted = referencesToLoad.stream().map( documentReferenceConverter::fromDocumentReference )
+					.collect( Collectors.toList() );
+
+			LinkedHashMap<R, E> objectsByReference = new LinkedHashMap<>( converted.size() );
+			objectLoader.loadBlocking( converted, objectsByReference, deadline );
+
+			loadedObjects = new ArrayList<>( converted.size() );
+			for ( R reference : converted ) {
+				loadedObjects.add( objectsByReference.get( reference ) );
+			}
+		}
+
+		return new DefaultLoadingResult<>( loadedObjects, documentReferenceConverter );
 	}
 
-	private static class JavaBeanUnusuableGetLoadingResult implements LoadingResult<EntityReference, Void> {
+	private static class DefaultLoadingResult<R, E> implements LoadingResult<R, E> {
 
-		private final DocumentReferenceConverter<EntityReference> documentReferenceConverter;
+		private final List<? extends E> loadedObjects;
+		private final DocumentReferenceConverter<R> documentReferenceConverter;
 
-		private JavaBeanUnusuableGetLoadingResult(DocumentReferenceConverter<EntityReference> documentReferenceConverter) {
+		private DefaultLoadingResult(List<E> loadedObjects, DocumentReferenceConverter<R> documentReferenceConverter) {
+			this.loadedObjects = CollectionHelper.toImmutableList( loadedObjects );
 			this.documentReferenceConverter = documentReferenceConverter;
 		}
 
 		@Override
-		public Void get(Object key) {
-			throw new AssertionFailure( "Attempt to load an entity with a key that was never issued." );
+		public E get(Object key) {
+			return loadedObjects.get( (int) key );
 		}
 
 		@Override
-		public EntityReference convertReference(DocumentReference reference) {
+		public R convertReference(DocumentReference reference) {
 			return documentReferenceConverter.fromDocumentReference( reference );
 		}
-
 	}
 }

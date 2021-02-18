@@ -6,6 +6,7 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeGroup;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -21,6 +22,7 @@ import org.hibernate.search.mapper.pojo.schema.management.spi.PojoScopeSchemaMan
 import org.hibernate.search.mapper.pojo.work.spi.PojoScopeWorkspace;
 import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.util.common.impl.Futures;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingMappingContext;
 
 /**
  * Makes sure that several different BatchIndexingWorkspace(s)
@@ -31,7 +33,7 @@ import org.hibernate.search.util.common.impl.Futures;
  */
 public class BatchCoordinator extends FailureHandledRunnable {
 
-	private final HibernateOrmMassIndexingMappingContext mappingContext;
+	private final MassIndexingMappingContext mappingContext;
 	private final DetachedBackendSessionContext sessionContext;
 	// Disjoint groups of entity types.
 	private final List<MassIndexingIndexedTypeGroup<?, ?>> typeGroupsToIndex;
@@ -51,7 +53,7 @@ public class BatchCoordinator extends FailureHandledRunnable {
 	private final Integer transactionTimeout;
 	private final List<CompletableFuture<?>> indexingFutures = new ArrayList<>();
 
-	BatchCoordinator(HibernateOrmMassIndexingMappingContext mappingContext,
+	BatchCoordinator(MassIndexingMappingContext mappingContext,
 			DetachedBackendSessionContext sessionContext,
 			MassIndexingNotifier notifier,
 			List<MassIndexingIndexedTypeGroup<?, ?>> typeGroupsToIndex,

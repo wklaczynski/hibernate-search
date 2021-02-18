@@ -7,25 +7,31 @@
 package org.hibernate.search.mapper.javabean.scope.impl;
 
 import java.util.Set;
+import org.hibernate.search.engine.backend.session.spi.DetachedBackendSessionContext;
 
-import org.hibernate.search.engine.backend.session.spi.BackendSessionContext;
 import org.hibernate.search.engine.search.aggregation.dsl.SearchAggregationFactory;
 import org.hibernate.search.engine.search.predicate.dsl.SearchPredicateFactory;
 import org.hibernate.search.engine.search.projection.dsl.SearchProjectionFactory;
 import org.hibernate.search.engine.search.query.dsl.SearchQuerySelectStep;
 import org.hibernate.search.engine.search.sort.dsl.SearchSortFactory;
-import org.hibernate.search.engine.backend.common.spi.DocumentReferenceConverter;
 import org.hibernate.search.mapper.javabean.common.EntityReference;
 import org.hibernate.search.mapper.javabean.entity.SearchIndexedEntity;
+import org.hibernate.search.mapper.javabean.massindexing.MassIndexer;
+import org.hibernate.search.mapper.javabean.massindexing.impl.MassIndexerImpl;
 import org.hibernate.search.mapper.javabean.scope.SearchScope;
 import org.hibernate.search.mapper.javabean.search.loading.context.impl.JavaBeanLoadingContext;
+import org.hibernate.search.mapper.javabean.search.loading.dsl.SearchLoadingOptionsStep;
+import org.hibernate.search.mapper.javabean.search.query.dsl.impl.JavaBeanSearchQuerySelectStep;
 import org.hibernate.search.mapper.pojo.scope.spi.PojoScopeDelegate;
 
 public class SearchScopeImpl<E> implements SearchScope<E> {
 
-	private final PojoScopeDelegate<EntityReference, Void, JavaBeanScopeIndexedTypeContext<? extends E>> delegate;
+	private final JavaBeanScopeMappingContext mappingContext;
+	private final PojoScopeDelegate<EntityReference, E, JavaBeanScopeIndexedTypeContext<? extends E>> delegate;
 
-	public SearchScopeImpl(PojoScopeDelegate<EntityReference, Void, JavaBeanScopeIndexedTypeContext<? extends E>> delegate) {
+	public SearchScopeImpl(JavaBeanScopeMappingContext mappingContext,
+			PojoScopeDelegate<EntityReference, E, JavaBeanScopeIndexedTypeContext<? extends E>> delegate) {
+		this.mappingContext = mappingContext;
 		this.delegate = delegate;
 	}
 
@@ -40,7 +46,7 @@ public class SearchScopeImpl<E> implements SearchScope<E> {
 	}
 
 	@Override
-	public SearchProjectionFactory<EntityReference, ?> projection() {
+	public SearchProjectionFactory<EntityReference, E> projection() {
 		return delegate.projection();
 	}
 
@@ -54,8 +60,34 @@ public class SearchScopeImpl<E> implements SearchScope<E> {
 		return delegate.includedIndexedTypes();
 	}
 
-	public SearchQuerySelectStep<?, EntityReference, Void, ?, ?, ?> search(BackendSessionContext sessionContext,
-			DocumentReferenceConverter<EntityReference> documentReferenceConverter) {
-		return delegate.search( sessionContext, new JavaBeanLoadingContext.Builder( documentReferenceConverter ) );
+	@Override
+	public MassIndexer massIndexer() {
+		return massIndexer( (String) null );
+	}
+
+	@Override
+	public MassIndexer massIndexer(String tenantId) {
+		return massIndexer( mappingContext.detachedBackendSessionContext( tenantId ) );
+	}
+
+	public MassIndexer massIndexer(DetachedBackendSessionContext detachedSessionContext) {
+		return new MassIndexerImpl(
+				mappingContext,
+				delegate.includedIndexedTypes(),
+				detachedSessionContext,
+				delegate.schemaManager(),
+				delegate.workspace( detachedSessionContext )
+		);
+	}
+
+	public SearchQuerySelectStep<?, EntityReference, E, SearchLoadingOptionsStep<E>, ?, ?> search(
+			JavaBeanScopeSessionContext sessionContext) {
+
+		JavaBeanLoadingContext.Builder<E> loadingContextBuilder = new JavaBeanLoadingContext.Builder<>(
+			mappingContext, sessionContext, delegate.includedIndexedTypes()
+		);
+		return new JavaBeanSearchQuerySelectStep(
+			delegate.search( sessionContext.backendSessionContext(), loadingContextBuilder )
+		);
 	}
 }

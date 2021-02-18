@@ -6,6 +6,7 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeGroup;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;

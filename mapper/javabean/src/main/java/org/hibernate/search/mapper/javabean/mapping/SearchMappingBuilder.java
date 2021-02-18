@@ -10,6 +10,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import javax.transaction.TransactionManager;
 
 import org.hibernate.search.engine.cfg.spi.ConfigurationProperty;
 import org.hibernate.search.engine.cfg.spi.ConfigurationPropertyChecker;
@@ -21,8 +22,11 @@ import org.hibernate.search.engine.common.spi.SearchIntegrationFinalizer;
 import org.hibernate.search.engine.common.spi.SearchIntegrationPartialBuildState;
 import org.hibernate.search.engine.environment.bean.BeanReference;
 import org.hibernate.search.engine.environment.bean.spi.BeanProvider;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
+import org.hibernate.search.mapper.javabean.bootstrap.impl.JavaBeanContainerBeanProvider;
 import org.hibernate.search.mapper.javabean.cfg.spi.JavaBeanMapperSpiSettings;
 import org.hibernate.search.mapper.javabean.impl.JavaBeanMappingInitiator;
+import org.hibernate.search.mapper.javabean.loading.impl.JavaBeanDefaultEntityLoaderFactory;
 import org.hibernate.search.mapper.javabean.log.impl.Log;
 import org.hibernate.search.mapper.javabean.mapping.impl.JavaBeanMapping;
 import org.hibernate.search.mapper.javabean.mapping.impl.JavaBeanMappingKey;
@@ -48,6 +52,12 @@ public final class SearchMappingBuilder {
 					} )
 					.build();
 
+	private static final ConfigurationProperty<Integer> QUERY_LOADING_FETCH_SIZE =
+			ConfigurationProperty.forKey( JavaBeanMapperSpiSettings.Radicals.QUERY_LOADING_FETCH_SIZE )
+					.asInteger()
+					.withDefault( JavaBeanMapperSpiSettings.Defaults.QUERY_LOADING_FETCH_SIZE )
+					.build();
+
 	private static ConfigurationPropertySource getPropertySource(Map<String, Object> properties,
 			ConfigurationPropertyChecker propertyChecker) {
 		return propertyChecker.wrap( ConfigurationPropertySource.fromMap( properties ) );
@@ -59,6 +69,7 @@ public final class SearchMappingBuilder {
 	private final SearchIntegrationBuilder integrationBuilder;
 	private final JavaBeanMappingKey mappingKey;
 	private final JavaBeanMappingInitiator mappingInitiator;
+	private TransactionManager transactionManager;
 
 	SearchMappingBuilder(MethodHandles.Lookup lookup) {
 		propertyChecker = ConfigurationPropertyChecker.create();
@@ -68,6 +79,7 @@ public final class SearchMappingBuilder {
 		mappingKey = new JavaBeanMappingKey();
 		mappingInitiator = new JavaBeanMappingInitiator( introspector );
 		integrationBuilder.addMappingInitiator( mappingKey, mappingInitiator );
+		integrationBuilder.entityLoadingFactoryType( JavaBeanDefaultEntityLoaderFactory.class );
 		// Enable annotated type discovery by default
 		mappingInitiator.annotatedTypeDiscoveryEnabled( true );
 	}
@@ -141,6 +153,10 @@ public final class SearchMappingBuilder {
 		return this;
 	}
 
+	public void entityLoadingFactoryType(Class<? extends EntityLoadingFactory> entityLoadingFactoryType) {
+		integrationBuilder.entityLoadingFactoryType( entityLoadingFactoryType );
+	}
+
 	public SearchMappingBuilder property(String name, Object value) {
 		properties.put( name, value );
 		return this;
@@ -151,8 +167,14 @@ public final class SearchMappingBuilder {
 		return this;
 	}
 
+	public SearchMappingBuilder transactionManager(TransactionManager transactionManager) {
+		this.transactionManager = transactionManager;
+		return this;
+	}
+
 	public CloseableSearchMapping build() {
-		BEAN_PROVIDER.get( propertySource ).ifPresent( integrationBuilder::beanManagerBeanProvider );
+		BeanProvider beanProvider = BEAN_PROVIDER.get( propertySource ).orElseGet( JavaBeanContainerBeanProvider::new );
+		integrationBuilder.beanManagerBeanProvider( beanProvider );
 
 		SearchIntegrationPartialBuildState integrationPartialBuildState = integrationBuilder.prepareBuild();
 		SearchIntegration integration = null;
@@ -179,6 +201,7 @@ public final class SearchMappingBuilder {
 			 */
 			JavaBeanMapping mappingImpl = (JavaBeanMapping) mapping;
 			mappingImpl.setIntegration( integration );
+			mappingImpl.setFetchSize( QUERY_LOADING_FETCH_SIZE.get( propertySource ) );
 			return mappingImpl;
 		}
 		catch (RuntimeException e) {

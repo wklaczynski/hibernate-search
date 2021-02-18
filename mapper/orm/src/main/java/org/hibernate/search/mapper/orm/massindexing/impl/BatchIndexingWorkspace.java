@@ -6,6 +6,7 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeGroup;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,9 +17,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.hibernate.CacheMode;
 import org.hibernate.search.engine.backend.session.spi.DetachedBackendSessionContext;
 import org.hibernate.search.mapper.orm.logging.impl.Log;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeLoader;
 import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.util.common.impl.Futures;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingMappingContext;
 
 /**
  * This runnable will prepare a pipeline for batch indexing
@@ -33,11 +36,11 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	private final HibernateOrmMassIndexingMappingContext mappingContext;
+	private final MassIndexingMappingContext mappingContext;
 	private final DetachedBackendSessionContext sessionContext;
 
 	private final MassIndexingIndexedTypeGroup<E, I> typeGroup;
-	private final MassIndexingTypeGroupLoader<? super E, I> typeGroupLoader;
+	private final MassIndexingTypeLoader<E, I> typeGroupLoader;
 
 	private final ProducerConsumerQueue<List<I>> primaryKeyStream;
 
@@ -54,8 +57,9 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 	private final List<CompletableFuture<?>> identifierProducingFutures = new ArrayList<>();
 	private final List<CompletableFuture<?>> indexingFutures = new ArrayList<>();
+	private final HibernateOrmMassIndexingTypeIndexer<E, I> typeIndexer;
 
-	BatchIndexingWorkspace(HibernateOrmMassIndexingMappingContext mappingContext,
+	BatchIndexingWorkspace(MassIndexingMappingContext mappingContext,
 			DetachedBackendSessionContext sessionContext,
 			MassIndexingNotifier notifier,
 			MassIndexingIndexedTypeGroup<E, I> typeGroup,
@@ -82,6 +86,16 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 		this.primaryKeyStream = new ProducerConsumerQueue<>( 1 );
 
 		this.objectsLimit = objectsLimit;
+
+		typeIndexer = new HibernateOrmMassIndexingTypeIndexer<>(
+				mappingContext,
+				sessionContext.tenantIdentifier(),
+				notifier,
+				typeGroupLoader,
+				primaryKeyStream,
+				cacheMode,
+				objectLoadingBatchSize,
+				objectsLimit, idFetchSize );
 	}
 
 	@Override
@@ -90,8 +104,8 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 			throw new AssertionFailure( "BatchIndexingWorkspace instance not expected to be reused" );
 		}
 
-		final BatchTransactionalContext transactionalContext =
-				new BatchTransactionalContext( mappingContext.sessionFactory() );
+		final BatchTransactionalContext transactionalContext
+				= new BatchTransactionalContext( mappingContext.sessionFactory() );
 		// First start the consumers, then the producers (reverse order):
 		startIndexing();
 		startProducingPrimaryKeys( transactionalContext );
@@ -128,12 +142,10 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 				getNotifier(),
 				new IdentifierProducer<>(
 						mappingContext.sessionFactory(), sessionContext.tenantIdentifier(),
+						typeIndexer,
 						getNotifier(),
-						typeGroup, typeGroupLoader,
-						primaryKeyStream,
-						objectLoadingBatchSize,
-						objectsLimit,
-						idFetchSize
+						typeGroup,
+						primaryKeyStream
 				),
 				transactionTimeout, sessionContext.tenantIdentifier()
 		);
@@ -152,9 +164,11 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 	private void startIndexing() {
 		final Runnable documentOutputter = new IdentifierConsumerDocumentProducer<>(
-				mappingContext, sessionContext.tenantIdentifier(),
+				mappingContext,
+				sessionContext.tenantIdentifier(),
+				typeIndexer,
 				getNotifier(),
-				typeGroup, typeGroupLoader,
+				typeGroup,
 				primaryKeyStream,
 				cacheMode,
 				transactionTimeout

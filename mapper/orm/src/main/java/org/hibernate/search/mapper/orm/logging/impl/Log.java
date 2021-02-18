@@ -20,6 +20,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.mapping.Value;
 import org.hibernate.resource.beans.container.spi.BeanContainer;
 import org.hibernate.search.engine.environment.bean.spi.BeanNotFoundException;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingStrategy;
 import org.hibernate.search.mapper.orm.common.EntityReference;
 import org.hibernate.search.mapper.orm.search.loading.EntityLoadingCacheLookupStrategy;
 import org.hibernate.search.mapper.pojo.logging.spi.PojoModelPathFormatter;
@@ -293,4 +294,11 @@ public interface Log extends BasicLogger {
 
 	@Message(id = ID_OFFSET + 41, value = "No such bean in bean container '%1$s'.")
 	BeanNotFoundException beanNotFoundInBeanContainer(BeanContainer beanContainer);
+
+	@Message(id = ID_OFFSET + 42,
+			value = "Unable to load the mas indexing instance corresponding to entity loader strategy '%1$s':"
+					+ " the entity loading strategy does not haw defined entity loading mass indexing interface."
+					+ " There is probably an entity projection in the query definition: it should be removed."
+	)
+	SearchException cannotLoadMassIndexingStrategyImpementationNotDefined(EntityLoadingStrategy loadingStrategy);
 }

@@ -6,6 +6,7 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeGroup;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +23,8 @@ import org.hibernate.search.mapper.pojo.schema.management.spi.PojoScopeSchemaMan
 import org.hibernate.search.mapper.pojo.work.spi.PojoScopeWorkspace;
 import org.hibernate.search.util.common.impl.Futures;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingIndexedTypeContext;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingMappingContext;
 
 /**
  * Prepares and configures a BatchIndexingWorkspace to start rebuilding
@@ -37,7 +40,7 @@ public class MassIndexerImpl implements MassIndexer {
 
 	static final String THREAD_NAME_PREFIX = "Mass indexing - ";
 
-	private final HibernateOrmMassIndexingMappingContext mappingContext;
+	private final MassIndexingMappingContext mappingContext;
 	private final DetachedBackendSessionContext sessionContext;
 
 	private final List<MassIndexingIndexedTypeGroup<?, ?>> typeGroupsToIndex;
@@ -60,8 +63,8 @@ public class MassIndexerImpl implements MassIndexer {
 	private MassIndexingFailureHandler failureHandler;
 	private MassIndexingMonitor monitor;
 
-	public MassIndexerImpl(HibernateOrmMassIndexingMappingContext mappingContext,
-			Set<? extends HibernateOrmMassIndexingIndexedTypeContext<?>> targetedIndexedTypes,
+	public MassIndexerImpl(MassIndexingMappingContext mappingContext,
+			Set<? extends MassIndexingIndexedTypeContext<?>> targetedIndexedTypes,
 			DetachedBackendSessionContext sessionContext,
 			PojoScopeSchemaManager scopeSchemaManager,
 			PojoScopeWorkspace scopeWorkspace) {

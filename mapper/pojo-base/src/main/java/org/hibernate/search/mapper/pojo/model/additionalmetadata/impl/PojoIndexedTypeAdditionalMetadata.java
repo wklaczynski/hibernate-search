@@ -12,18 +12,24 @@ import org.hibernate.search.mapper.pojo.bridge.mapping.programmatic.RoutingBinde
 
 public class PojoIndexedTypeAdditionalMetadata {
 	private final Optional<String> backendName;
+	private final Optional<String> loaderName;
 	private final Optional<String> indexName;
 	private final Optional<RoutingBinder> routingBinder;
 
-	public PojoIndexedTypeAdditionalMetadata(Optional<String> backendName, Optional<String> indexName,
-			Optional<RoutingBinder> routingBinder) {
+	public PojoIndexedTypeAdditionalMetadata(Optional<String> backendName, Optional<String> loaderName,
+		Optional<String> indexName, Optional<RoutingBinder> routingBinder) {
 		this.backendName = backendName;
+		this.loaderName = loaderName;
 		this.indexName = indexName;
 		this.routingBinder = routingBinder;
 	}
 
 	public Optional<String> backendName() {
 		return backendName;
+	}
+
+	public Optional<String> loaderName() {
+		return loaderName;
 	}
 
 	public Optional<String> indexName() {

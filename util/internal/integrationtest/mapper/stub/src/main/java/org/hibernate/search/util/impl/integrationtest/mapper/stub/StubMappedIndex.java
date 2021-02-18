@@ -51,6 +51,7 @@ public abstract class StubMappedIndex {
 	private String indexName;
 	private String typeName;
 	private String backendName;
+	private String loadingName;
 	private MappedIndexManager manager;
 
 	public StubMappedIndex() {
@@ -82,6 +83,15 @@ public abstract class StubMappedIndex {
 
 	public StubMappedIndex backendName(String name) {
 		this.backendName = name;
+		return this;
+	}
+
+	public Optional<String> loadingName() {
+		return Optional.ofNullable( loadingName );
+	}
+
+	public StubMappedIndex loadingName(String loadingName) {
+		this.loadingName = loadingName;
 		return this;
 	}
 

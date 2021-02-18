@@ -23,4 +23,6 @@ public interface JavaBeanEventContextMessages {
 	@Message(value = "JavaBean mapping")
 	String mapping();
 
+	@Message(value = "Schema management")
+	String schemaManagement();
 }

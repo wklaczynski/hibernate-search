@@ -1,0 +1,27 @@
+/*
+ * Hibernate Search, full-text search for your domain model
+ *
+ * License: GNU Lesser General Public License (LGPL), version 2.1 or later
+ * See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
+ */
+package org.hibernate.search.mapper.javabean.search.loading.spi;
+
+import java.util.Collections;
+import java.util.List;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingStrategy;
+import org.hibernate.search.mapper.javabean.common.EntityReference;
+
+
+public interface SearchEntityLoadingStrategy<E> extends EntityLoadingStrategy {
+
+	default EntityLoader<EntityReference, E> createLoader(
+			SearchLoadingIndexedTypeContext typeContext,
+			MutableEntityLoadingOptions options) {
+		return createLoader( Collections.singletonList( typeContext ), options );
+	}
+
+	EntityLoader<EntityReference, E> createLoader(
+			List<SearchLoadingIndexedTypeContext> typeContext,
+			MutableEntityLoadingOptions options);
+}

@@ -6,12 +6,15 @@
  */
 package org.hibernate.search.mapper.javabean.session;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 
 import org.hibernate.search.engine.search.query.dsl.SearchQuerySelectStep;
 import org.hibernate.search.mapper.javabean.common.EntityReference;
+import org.hibernate.search.mapper.javabean.massindexing.MassIndexer;
 import org.hibernate.search.mapper.javabean.scope.SearchScope;
+import org.hibernate.search.mapper.javabean.search.loading.dsl.SearchLoadingOptionsStep;
 import org.hibernate.search.mapper.javabean.work.SearchIndexer;
 import org.hibernate.search.mapper.javabean.work.SearchIndexingPlan;
 
@@ -34,7 +37,7 @@ public interface SearchSession extends AutoCloseable {
 	 * @return The initial step of a DSL where the search query can be defined.
 	 * @see SearchQuerySelectStep
 	 */
-	default <T> SearchQuerySelectStep<?, EntityReference, ?, ?, ?, ?> search(Class<T> type) {
+	default <T> SearchQuerySelectStep<?, EntityReference, T, SearchLoadingOptionsStep<T>, ?, ?> search(Class<T> type) {
 		return search( Collections.singleton( type ) );
 	}
 
@@ -48,7 +51,7 @@ public interface SearchSession extends AutoCloseable {
 	 * @return The initial step of a DSL where the search query can be defined.
 	 * @see SearchQuerySelectStep
 	 */
-	<T> SearchQuerySelectStep<?, EntityReference, ?, ?, ?, ?> search(Collection<? extends Class<? extends T>> types);
+	<T> SearchQuerySelectStep<?, EntityReference, T, SearchLoadingOptionsStep<T>, ?, ?> search(Collection<? extends Class<? extends T>> types);
 
 	/**
 	 * Initiate the building of a search query.
@@ -60,7 +63,38 @@ public interface SearchSession extends AutoCloseable {
 	 * @return The initial step of a DSL where the search query can be defined.
 	 * @see SearchQuerySelectStep
 	 */
-	<T> SearchQuerySelectStep<?, EntityReference, ?, ?, ?, ?> search(SearchScope<T> scope);
+	<T> SearchQuerySelectStep<?, EntityReference, T, SearchLoadingOptionsStep<T>, ?, ?> search(SearchScope<T> scope);
+
+	/**
+	 * Creates a {@link MassIndexer} to rebuild the indexes of all indexed entity types.
+	 * <p>
+	 * {@link MassIndexer} instances cannot be reused.
+	 *
+	 * @return The created mass indexer.
+	 */
+	default MassIndexer massIndexer() {
+		return massIndexer( Object.class );
+	}
+
+	/**
+	 * Creates a {@link MassIndexer} to rebuild the indexes mapped to the given types, or to any of their sub-types.
+	 * <p>
+	 * {@link MassIndexer} instances cannot be reused.
+	 *
+	 * @param types An array of indexed types, or supertypes of all indexed types that will be targeted by the workspace.
+	 * @return The created mass indexer.
+	 */
+	default MassIndexer massIndexer(Class<?>... types) {
+		return massIndexer( Arrays.asList( types ) );
+	}
+
+	/**
+	 * Creates a {@link MassIndexer} to rebuild the indexes mapped to the given types, or to any of their sub-types.
+	 *
+	 * @param types A collection of indexed types, or supertypes of all indexed types that will be targeted by the workspace.
+	 * @return A {@link SearchWorkspace}.
+	 */
+	MassIndexer massIndexer(Collection<? extends Class<?>> types);
 
 	/**
 	 * Create a {@link SearchScope} limited to the given type.

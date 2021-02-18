@@ -34,6 +34,12 @@ public @interface Indexed {
 	String backend() default "";
 
 	/**
+	 * @return The name of the entity loading.
+	 * Defaults to the {@link org.hibernate.search.engine.cfg.EngineSettings#LOADING default loading}.
+	 */
+	String loading() default "";
+
+	/**
 	 * @return The name of the index.
 	 * Defaults to the entity name.
 	 */

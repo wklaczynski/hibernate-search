@@ -19,8 +19,8 @@ public final class JavaBeanMapperSpiSettings {
 
 		private Radicals() {
 		}
-
 		public static final String BEAN_PROVIDER = "bean_provider";
+		public static final String QUERY_LOADING_FETCH_SIZE = "query.loading.fetch_size";
 	}
 
 	/**
@@ -31,6 +31,7 @@ public final class JavaBeanMapperSpiSettings {
 		private Defaults() {
 		}
 
+		public static final int QUERY_LOADING_FETCH_SIZE = 100;
 	}
 
 }
