@@ -24,6 +24,7 @@ import org.hibernate.search.engine.backend.types.dsl.IndexFieldTypeFinalStep;
 import org.hibernate.search.engine.logging.impl.Log;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
 import org.hibernate.search.util.common.impl.StringHelper;
+import org.hibernate.search.engine.backend.document.model.dsl.IndexSchemaNamedPredicateOptionsStep;
 
 public class IndexSchemaElementImpl<B extends IndexSchemaObjectNodeBuilder> implements IndexSchemaElement {
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
@@ -66,6 +67,17 @@ public class IndexSchemaElementImpl<B extends IndexSchemaObjectNodeBuilder> impl
 			fieldFinalStep.multiValued();
 		}
 		return fieldFinalStep;
+	}
+
+	@Override
+	public <F> IndexSchemaNamedPredicateOptionsStep<?> namedPredicate(String relativeNamedPredicateName, F factory) {
+		checkRelativeNamedPredicateName( relativeNamedPredicateName );
+		IndexSchemaNamedPredicateOptionsStep<?> namedPredicateOptionStep
+				= nestingContext.<IndexSchemaNamedPredicateOptionsStep<?>>nest(
+						relativeNamedPredicateName,
+						(prefixedName, inclusion) -> objectNodeBuilder.addNamedPredicate( prefixedName, inclusion, factory )
+				);
+		return namedPredicateOptionStep;
 	}
 
 	@Override
@@ -148,4 +160,12 @@ public class IndexSchemaElementImpl<B extends IndexSchemaObjectNodeBuilder> impl
 		}
 	}
 
+	private void checkRelativeNamedPredicateName(String relativeFilterName) {
+		if ( StringHelper.isEmpty( relativeFilterName ) ) {
+			throw log.relativeNamedPredicateNameCannotBeNullOrEmpty( relativeFilterName, objectNodeBuilder.eventContext() );
+		}
+		if ( relativeFilterName.contains( "." ) ) {
+			throw log.relativeNamedPredicateNameCannotContainDot( relativeFilterName, objectNodeBuilder.eventContext() );
+		}
+	}
 }

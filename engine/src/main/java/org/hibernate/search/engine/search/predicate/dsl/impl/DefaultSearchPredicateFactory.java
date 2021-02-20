@@ -25,6 +25,7 @@ import org.hibernate.search.engine.search.predicate.dsl.SimpleQueryStringPredica
 import org.hibernate.search.engine.search.predicate.dsl.SpatialPredicateInitialStep;
 import org.hibernate.search.engine.search.predicate.dsl.WildcardPredicateFieldStep;
 import org.hibernate.search.engine.search.predicate.dsl.spi.SearchPredicateDslContext;
+import org.hibernate.search.engine.search.predicate.dsl.NamedPredicateOptionsStep;
 
 
 public class DefaultSearchPredicateFactory implements SearchPredicateFactory {
@@ -95,6 +96,11 @@ public class DefaultSearchPredicateFactory implements SearchPredicateFactory {
 	@Override
 	public SpatialPredicateInitialStep spatial() {
 		return new SpatialPredicateInitialStepImpl( dslContext );
+	}
+
+	@Override
+	public NamedPredicateOptionsStep named(String name) {
+		return new NamedPredicateOptionsStepImpl( this, dslContext, name );
 	}
 
 	@Override

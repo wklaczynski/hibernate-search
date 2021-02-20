@@ -636,4 +636,28 @@ public interface Log extends BasicLogger {
 			value = "Unable to create instance of analysis component '%1$s': %2$s")
 	SearchException unableToCreateAnalysisComponent(@FormatWith(ClassFormatter.class) Class<?> type, String causeMessage,
 			@Cause Exception cause);
+
+	@Message(id = ID_OFFSET + 144,
+			value = "The index schema named predicate '%1$s' was added twice.")
+	SearchException indexSchemaNamedPredicateNameConflict(String relativeFilterName,
+			@Param EventContext context);
+
+	@Message(id = ID_OFFSET + 145,
+			value = "Multiple calls to toReference() for the same named predicate definition."
+					+ " You must call toReference() exactly once.")
+	SearchException cannotCreateNamedPredicateReferenceMultipleTimes(@Param EventContext context);
+
+	@Message(id = ID_OFFSET + 146,
+			value = "Incomplete named predicate definition."
+					+ " You must call toReference() to complete the filter definition.")
+	SearchException incompleteNamedPredicateDefinition(@Param EventContext context);
+
+	@Message(id = ID_OFFSET + 147,
+
+		value = "Multiple conflicting models for named predicate definition name '%1$s'.")
+	SearchException conflictingNamedPredicateModel(String name, @Param EventContext context);
+
+	@Message(id = ID_OFFSET + 148,
+		value = "Unknown nmaed predicate definition '%1$s'.")
+	SearchException unknownNamedPredicateForSearch(String name, @Param EventContext context);
 }

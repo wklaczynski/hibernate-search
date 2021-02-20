@@ -7,7 +7,9 @@
 package org.hibernate.search.backend.lucene.document.model.dsl.impl;
 
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.hibernate.search.backend.lucene.document.model.impl.AbstractLuceneIndexSchemaFieldNode;
@@ -27,6 +29,7 @@ import org.hibernate.search.engine.backend.document.model.dsl.spi.IndexSchemaObj
 import org.hibernate.search.engine.backend.document.model.dsl.spi.IndexSchemaObjectNodeBuilder;
 import org.hibernate.search.engine.backend.types.IndexFieldType;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
+import org.hibernate.search.engine.backend.document.model.dsl.IndexSchemaNamedPredicateOptionsStep;
 
 abstract class AbstractLuceneIndexSchemaObjectNodeBuilder
 		implements IndexSchemaObjectNodeBuilder, IndexSchemaBuildContext {
@@ -35,6 +38,7 @@ abstract class AbstractLuceneIndexSchemaObjectNodeBuilder
 	// Use a LinkedHashMap for deterministic iteration
 	private final Map<String, LuceneIndexSchemaNodeContributor> fields = new LinkedHashMap<>();
 	private final Map<String, LuceneIndexSchemaNodeContributor> templates = new LinkedHashMap<>();
+	private final Map<String, LuceneIndexSchemaNodeContributor> filters = new LinkedHashMap<>();
 
 	@Override
 	public String toString() {
@@ -63,6 +67,16 @@ abstract class AbstractLuceneIndexSchemaObjectNodeBuilder
 				new LuceneIndexSchemaObjectFieldNodeBuilder( this, relativeFieldName, inclusion, structure );
 		putField( relativeFieldName, objectFieldBuilder );
 		return objectFieldBuilder;
+	}
+
+	@Override
+	public <F> IndexSchemaNamedPredicateOptionsStep<?> addNamedPredicate(String name,
+			IndexFieldInclusion inclusion,F factory) {
+		LuceneIndexSchemaFilterFactoryBuilder<F> childBuilder = new LuceneIndexSchemaFilterFactoryBuilder<>(
+			this, name, factory
+		);
+		putFilter( name, childBuilder );
+		return childBuilder;
 	}
 
 	@Override
@@ -104,6 +118,9 @@ abstract class AbstractLuceneIndexSchemaObjectNodeBuilder
 		for ( LuceneIndexSchemaNodeContributor template : templates.values() ) {
 			template.contribute( collector, node, staticChildrenByNameForParent );
 		}
+		for ( LuceneIndexSchemaNodeContributor contributor : filters.values() ) {
+			contributor.contribute( collector, node, staticChildrenByNameForParent );
+		}
 	}
 
 	private void putField(String name, LuceneIndexSchemaNodeContributor contributor) {
@@ -117,6 +134,17 @@ abstract class AbstractLuceneIndexSchemaObjectNodeBuilder
 		Object previous = templates.putIfAbsent( name, contributor );
 		if ( previous != null ) {
 			throw log.indexSchemaFieldTemplateNameConflict( name, eventContext() );
+		}
+	}
+
+	final List<String> getFilterNames() {
+		return new ArrayList<>( filters.keySet() );
+	}
+
+	private void putFilter(String name, LuceneIndexSchemaNodeContributor contributor) {
+		Object previous = filters.putIfAbsent( name, contributor );
+		if ( previous != null ) {
+			throw log.indexSchemaNamedPredicateNameConflict( name, eventContext() );
 		}
 	}
 }

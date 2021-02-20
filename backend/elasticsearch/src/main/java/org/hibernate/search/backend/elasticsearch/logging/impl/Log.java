@@ -725,4 +725,15 @@ public interface Log extends BasicLogger {
 	@Message(id = ID_OFFSET + 136, value = "Invalid use of 'missing().use(...)' for a distance sort. Elasticsearch always assumes missing values have a distance of '+Infinity', and this behavior cannot be customized.")
 	SearchException missingAsOnSortNotSupported(@Param EventContext context);
 
+	@Message(id = ID_OFFSET + 137, value = "The index schema named predicate '%1$s' was added twice.")
+	SearchException indexSchemaNamedPredicateNameConflict(String relativeFilterName, @Param EventContext context);
+
+	@Message(id = ID_OFFSET + 138, value = "Multiple calls to toReference() for the same named predicate definition. You must call toReference() exactly once.")
+	SearchException cannotCreateNamedPredicateReferenceMultipleTimes(@Param EventContext context);
+
+	@Message(id = ID_OFFSET + 140, value = "Multiple conflicting models for named predicate definition name '%1$s'.")
+	SearchException conflictingNamedPredicateModel(String name, @Param EventContext context);
+
+	@Message(id = ID_OFFSET + 141, value = "Unknown named predicate definition '%1$s'.")
+	SearchException unknownNamedPredicateForSearch(String name, @Param EventContext context);
 }

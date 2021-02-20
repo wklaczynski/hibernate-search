@@ -7,7 +7,9 @@
 package org.hibernate.search.backend.elasticsearch.document.model.dsl.impl;
 
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.hibernate.search.backend.elasticsearch.document.model.impl.AbstractElasticsearchIndexSchemaFieldNode;
@@ -28,6 +30,7 @@ import org.hibernate.search.backend.elasticsearch.lowlevel.index.mapping.impl.Ab
 import org.hibernate.search.backend.elasticsearch.logging.impl.Log;
 import org.hibernate.search.engine.backend.types.IndexFieldType;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
+import org.hibernate.search.engine.backend.document.model.dsl.IndexSchemaNamedPredicateOptionsStep;
 
 public abstract class AbstractElasticsearchIndexSchemaObjectNodeBuilder implements IndexSchemaObjectNodeBuilder {
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
@@ -35,6 +38,7 @@ public abstract class AbstractElasticsearchIndexSchemaObjectNodeBuilder implemen
 	// Use a LinkedHashMap for deterministic iteration
 	private final Map<String, ElasticsearchIndexSchemaNodeContributor> fields = new LinkedHashMap<>();
 	private final Map<String, ElasticsearchIndexSchemaNodeContributor> templates = new LinkedHashMap<>();
+	private final Map<String, ElasticsearchIndexSchemaNodeContributor> namedPredicates = new LinkedHashMap<>();
 
 	@Override
 	public String toString() {
@@ -63,6 +67,16 @@ public abstract class AbstractElasticsearchIndexSchemaObjectNodeBuilder implemen
 				new ElasticsearchIndexSchemaObjectFieldNodeBuilder( this, relativeFieldName, inclusion, structure );
 		putField( relativeFieldName, objectFieldBuilder );
 		return objectFieldBuilder;
+	}
+
+	@Override
+	public <F> IndexSchemaNamedPredicateOptionsStep<?> addNamedPredicate(String relativeNamedPredicateName,
+			IndexFieldInclusion inclusion, F factory) {
+		ElasticsearchIndexSchemaNamedPredicateFactoryBuilder<F> childBuilder = new ElasticsearchIndexSchemaNamedPredicateFactoryBuilder<>(
+			this, relativeNamedPredicateName, inclusion, factory
+		);
+		putFilter( relativeNamedPredicateName, childBuilder );
+		return childBuilder;
 	}
 
 	@Override
@@ -104,6 +118,14 @@ public abstract class AbstractElasticsearchIndexSchemaObjectNodeBuilder implemen
 		for ( ElasticsearchIndexSchemaNodeContributor template : templates.values() ) {
 			template.contribute( collector, node, staticChildrenByNameForParent, mapping );
 		}
+		for ( Map.Entry<String, ElasticsearchIndexSchemaNodeContributor> entry : namedPredicates.entrySet() ) {
+			ElasticsearchIndexSchemaNodeContributor propertyContributor = entry.getValue();
+			propertyContributor.contribute( collector, node, staticChildrenByNameForParent, mapping );
+		}
+	}
+
+	final List<String> getFilterNames() {
+		return new ArrayList<>( namedPredicates.keySet() );
 	}
 
 	abstract ElasticsearchIndexSchemaRootNodeBuilder getRootNodeBuilder();
@@ -128,4 +150,10 @@ public abstract class AbstractElasticsearchIndexSchemaObjectNodeBuilder implemen
 		}
 	}
 
+	private void putFilter(String name, ElasticsearchIndexSchemaNodeContributor contributor) {
+		Object previous = namedPredicates.putIfAbsent( name, contributor );
+		if ( previous != null ) {
+			throw log.indexSchemaNamedPredicateNameConflict( name, eventContext() );
+		}
+	}
 }

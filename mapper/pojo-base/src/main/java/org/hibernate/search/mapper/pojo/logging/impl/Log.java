@@ -558,4 +558,7 @@ public interface Log extends BasicLogger {
 			value = "Invalid entity name '%1$s' in an indexing event: this entity does not exist or is not indexed.")
 	SearchException nonIndexedTypeInIndexingEvent(String entityName);
 
+	@Message(id = ID_OFFSET + 90,
+			value = "Empty factory reference.")
+	SearchException missingFactoryReferenceInBinding();
 }

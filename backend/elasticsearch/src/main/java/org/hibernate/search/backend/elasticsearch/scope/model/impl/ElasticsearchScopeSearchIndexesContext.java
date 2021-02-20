@@ -17,6 +17,7 @@ import java.util.Set;
 
 import org.hibernate.search.backend.elasticsearch.document.model.impl.AbstractElasticsearchIndexSchemaFieldNode;
 import org.hibernate.search.backend.elasticsearch.document.model.impl.ElasticsearchIndexModel;
+import org.hibernate.search.backend.elasticsearch.document.model.impl.ElasticsearchIndexSchemaNamedPredicateNode;
 import org.hibernate.search.backend.elasticsearch.logging.impl.Log;
 import org.hibernate.search.backend.elasticsearch.search.impl.ElasticsearchMultiIndexSearchObjectFieldContext;
 import org.hibernate.search.backend.elasticsearch.search.impl.ElasticsearchMultiIndexSearchValueFieldContext;
@@ -102,6 +103,21 @@ public class ElasticsearchScopeSearchIndexesContext implements ElasticsearchSear
 	}
 
 	@Override
+	public ElasticsearchIndexSchemaNamedPredicateNode namedPredicate(String absoluteNamedPredicatePath) {
+		ElasticsearchIndexSchemaNamedPredicateNode resultOrNull;
+		if ( elements().size() == 1 ) {
+			resultOrNull = indexModels.iterator().next().filterNode( absoluteNamedPredicatePath );
+		}
+		else {
+			resultOrNull = createMultiIndexFilterNode( absoluteNamedPredicatePath );
+		}
+		if ( resultOrNull == null ) {
+			throw log.unknownNamedPredicateForSearch( absoluteNamedPredicatePath, indexesEventContext() );
+		}
+		return resultOrNull;
+	}
+
+	@Override
 	public boolean hasSchemaObjectNodeComponent(String absoluteFieldPath) {
 		for ( ElasticsearchIndexModel indexModel : indexModels ) {
 			AbstractElasticsearchIndexSchemaFieldNode field = indexModel.fieldOrNull( absoluteFieldPath );
@@ -158,5 +174,34 @@ public class ElasticsearchScopeSearchIndexesContext implements ElasticsearchSear
 			return new ElasticsearchMultiIndexSearchValueFieldContext<>( hibernateSearchIndexNames, absoluteFieldPath,
 					(List) fieldForEachIndex );
 		}
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"}) // We check types using reflection
+	private ElasticsearchIndexSchemaNamedPredicateNode createMultiIndexFilterNode(String absoluteFilterPath) {
+		List<ElasticsearchIndexSchemaNamedPredicateNode> nodeForEachIndex = new ArrayList<>();
+		ElasticsearchIndexSchemaNamedPredicateNode firstNode = null;
+
+		for ( ElasticsearchIndexModel indexModel : indexModels ) {
+			ElasticsearchIndexSchemaNamedPredicateNode nodeForCurrentIndex =
+					indexModel.filterNode( absoluteFilterPath );
+			if ( nodeForCurrentIndex == null ) {
+				continue;
+			}
+			if ( firstNode == null ) {
+				firstNode = nodeForCurrentIndex;
+			}
+			nodeForEachIndex.add( nodeForCurrentIndex );
+		}
+
+		if ( nodeForEachIndex.isEmpty() ) {
+			return null;
+		}
+
+
+		if ( nodeForEachIndex.size() > 1 ) {
+			throw log.conflictingNamedPredicateModel( absoluteFilterPath, indexesEventContext() );
+		}
+
+		return firstNode;
 	}
 }

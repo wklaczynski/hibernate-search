@@ -6,6 +6,8 @@
  */
 package org.hibernate.search.util.impl.integrationtest.common.stub.backend.document.model;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.hibernate.search.engine.backend.types.Aggregable;
@@ -18,6 +20,7 @@ import org.hibernate.search.engine.backend.types.Sortable;
 import org.hibernate.search.engine.backend.types.Projectable;
 import org.hibernate.search.engine.backend.document.model.dsl.spi.IndexSchemaBuildContext;
 import org.hibernate.search.engine.reporting.spi.EventContexts;
+import org.hibernate.search.engine.search.predicate.factories.NamedPredicateFactory;
 import org.hibernate.search.util.common.reporting.EventContext;
 import org.hibernate.search.util.impl.integrationtest.common.stub.StubTreeNode;
 import org.hibernate.search.util.impl.integrationtest.common.stub.backend.types.converter.impl.StubFieldConverter;
@@ -27,6 +30,7 @@ public final class StubIndexSchemaNode extends StubTreeNode<StubIndexSchemaNode>
 	private enum Type {
 		ROOT,
 		OBJECT_FIELD,
+		FILTER_FIELD,
 		NON_OBJECT_FIELD,
 		OBJECT_FIELD_TEMPLATE,
 		NON_OBJECT_FIELD_TEMPLATE
@@ -54,6 +58,12 @@ public final class StubIndexSchemaNode extends StubTreeNode<StubIndexSchemaNode>
 		return new Builder( parent, templateName, Type.NON_OBJECT_FIELD_TEMPLATE );
 	}
 
+	public static Builder namedPredicate(Builder parent, String relativeNamedPredicateName) {
+		return new Builder( parent, relativeNamedPredicateName, Type.FILTER_FIELD );
+	}
+
+	private final Map<String, Object> filterParams;
+
 	/*
 	 * The following properties are purposely ignored when comparing two nodes,
 	 * to make it easier to define nodes that should be matched.
@@ -65,6 +75,7 @@ public final class StubIndexSchemaNode extends StubTreeNode<StubIndexSchemaNode>
 		super( builder );
 		this.converter = builder.converter;
 		this.idDslConverter = builder.idDslConverter;
+		this.filterParams = builder.namedPredicateParams;
 	}
 
 	public ToDocumentIdentifierValueConverter<?> getIdDslConverter() {
@@ -75,9 +86,14 @@ public final class StubIndexSchemaNode extends StubTreeNode<StubIndexSchemaNode>
 		return converter;
 	}
 
+	public Map<String, Object> getNamedPredicateParams() {
+		return filterParams;
+	}
+
 	public static class Builder extends AbstractBuilder<StubIndexSchemaNode> implements IndexSchemaBuildContext {
 		private StubFieldConverter<?> converter;
 		private ToDocumentIdentifierValueConverter<?> idDslConverter;
+		private Map<String, Object> namedPredicateParams = new LinkedHashMap<>();
 
 		private Builder(Builder parent, String relativeFieldName, Type type) {
 			super( parent, relativeFieldName );
@@ -96,9 +112,27 @@ public final class StubIndexSchemaNode extends StubTreeNode<StubIndexSchemaNode>
 
 		public Builder field(String relativeFieldName, Class<?> inputType, Consumer<Builder> contributor) {
 			Builder builder = StubIndexSchemaNode.field( this, relativeFieldName )
-					.inputType( inputType );
+				.inputType( inputType );
 			contributor.accept( builder );
 			child( builder );
+			return this;
+		}
+
+		public Builder filter(String relativeFilterName, Consumer<Builder> contributor) {
+			Builder builder = StubIndexSchemaNode.namedPredicate( this, relativeFilterName )
+				.namedPredicateParams( namedPredicateParams );
+			contributor.accept( builder );
+			child( builder );
+			return this;
+		}
+
+		public Builder namedPredicateParam(String name, Object value) {
+			namedPredicateParams.put( name, value );
+			return this;
+		}
+
+		public Builder namedPredicateParams(Map<String, Object> namedPredicateParams) {
+			this.namedPredicateParams = namedPredicateParams;
 			return this;
 		}
 
@@ -159,6 +193,11 @@ public final class StubIndexSchemaNode extends StubTreeNode<StubIndexSchemaNode>
 
 		public Builder multiValued(boolean multiValued) {
 			attribute( "multiValued", multiValued );
+			return this;
+		}
+
+		public Builder namedPredicateFactory(NamedPredicateFactory factory) {
+			attribute( "namedPredicateFactory", factory );
 			return this;
 		}
 

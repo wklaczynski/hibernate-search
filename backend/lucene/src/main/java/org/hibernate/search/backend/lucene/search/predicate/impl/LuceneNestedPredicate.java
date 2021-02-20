@@ -6,6 +6,7 @@
  */
 package org.hibernate.search.backend.lucene.search.predicate.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.hibernate.search.backend.lucene.lowlevel.query.impl.Queries;
@@ -57,10 +58,16 @@ class LuceneNestedPredicate extends AbstractLuceneSingleFieldPredicate {
 	static class Builder extends AbstractBuilder implements NestedPredicateBuilder {
 		private LuceneSearchPredicate nestedPredicate;
 
+		private static List<String> extendPath(List<String> nestedPathHierarchy, String nextPath) {
+			List<String> result = new ArrayList<>( nestedPathHierarchy );
+			result.add( nextPath );
+			return result;
+		}
+
 		Builder(LuceneSearchContext searchContext, String absoluteFieldPath,
 				List<String> nestedPathHierarchy) {
 			// The given list includes absoluteFieldPath at the end, but here we don't want it to be included.
-			super( searchContext, absoluteFieldPath, nestedPathHierarchy.subList( 0, nestedPathHierarchy.size() - 1 ) );
+			super( searchContext, absoluteFieldPath, extendPath( nestedPathHierarchy, absoluteFieldPath ) );
 		}
 
 		@Override
