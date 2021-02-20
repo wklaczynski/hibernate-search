@@ -35,6 +35,7 @@ import org.hibernate.search.util.common.reporting.EventContext;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.search.similarities.Similarity;
+import org.hibernate.search.backend.lucene.cache.QueryCachingContext;
 
 
 public class LuceneBackendImpl implements BackendImplementor, LuceneBackend {
@@ -58,7 +59,8 @@ public class LuceneBackendImpl implements BackendImplementor, LuceneBackend {
 			LuceneAnalysisDefinitionRegistry analysisDefinitionRegistry,
 			MultiTenancyStrategy multiTenancyStrategy,
 			TimingSource timingSource,
-			FailureHandler failureHandler) {
+			FailureHandler failureHandler,
+			QueryCachingContext cachingContext) {
 		this.eventContext = eventContext;
 		this.threads = threads;
 
@@ -66,7 +68,7 @@ public class LuceneBackendImpl implements BackendImplementor, LuceneBackend {
 		Similarity similarity = analysisDefinitionRegistry.getSimilarity();
 
 		this.readOrchestrator = new LuceneSyncWorkOrchestratorImpl(
-				"Lucene read work orchestrator - " + eventContext.render(), similarity
+				"Lucene read work orchestrator - " + eventContext.render(), similarity, cachingContext
 		);
 		this.multiTenancyStrategy = multiTenancyStrategy;
 

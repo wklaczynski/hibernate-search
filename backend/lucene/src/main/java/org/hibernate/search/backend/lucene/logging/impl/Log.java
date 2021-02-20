@@ -636,4 +636,8 @@ public interface Log extends BasicLogger {
 			value = "Unable to create instance of analysis component '%1$s': %2$s")
 	SearchException unableToCreateAnalysisComponent(@FormatWith(ClassFormatter.class) Class<?> type, String causeMessage,
 			@Cause Exception cause);
+
+	@Message(id = ID_OFFSET + 143,
+			value = "Error while applying query cache configuration: %1$s")
+	SearchException unableToApplyQueryCacheConfiguration(String errorMessage, @Cause Exception e);
 }
