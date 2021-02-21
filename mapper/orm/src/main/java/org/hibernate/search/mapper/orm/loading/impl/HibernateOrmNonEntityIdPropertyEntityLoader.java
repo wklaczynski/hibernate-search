@@ -23,7 +23,7 @@ import org.hibernate.query.Query;
 import org.hibernate.search.mapper.orm.common.EntityReference;
 import org.hibernate.search.mapper.orm.logging.impl.Log;
 import org.hibernate.search.engine.common.timing.spi.Deadline;
-import org.hibernate.search.mapper.orm.search.loading.impl.HibernateOrmComposableSearchEntityLoader;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
 import org.hibernate.search.mapper.orm.search.loading.impl.EntityGraphHint;
 import org.hibernate.search.mapper.orm.search.loading.impl.MutableEntityLoadingOptions;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
@@ -35,7 +35,7 @@ import org.hibernate.search.util.common.reflect.spi.ValueReadHandle;
  *
  * @param <E> The type of loaded entities.
  */
-class HibernateOrmNonEntityIdPropertyEntityLoader<E> implements HibernateOrmComposableSearchEntityLoader<E> {
+class HibernateOrmNonEntityIdPropertyEntityLoader<E> implements EntityLoader<EntityReference, E> {
 
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
@@ -64,7 +64,7 @@ class HibernateOrmNonEntityIdPropertyEntityLoader<E> implements HibernateOrmComp
 
 	@Override
 	public void loadBlocking(List<EntityReference> references,
-			Map<? super EntityReference, ? super E> entitiesByReference, Deadline deadline) {
+			Map<EntityReference, E> entitiesByReference, Deadline deadline) {
 		Map<Object, EntityReference> documentIdSourceValueToReference = new HashMap<>();
 		for ( EntityReference reference : references ) {
 			documentIdSourceValueToReference.put( reference.id(), reference );

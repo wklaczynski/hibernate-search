@@ -18,22 +18,27 @@ import java.util.stream.Collectors;
 import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
+import org.hibernate.search.mapper.orm.common.EntityReference;
+import org.hibernate.search.mapper.orm.common.impl.HibernateOrmUtils;
+import org.hibernate.search.mapper.orm.loading.HibernateOrmEntityLoadingStrategy;
 import org.hibernate.search.mapper.orm.logging.impl.Log;
 import org.hibernate.search.mapper.orm.massindexing.impl.HibernateOrmMassIndexingIndexedTypeContext;
+import org.hibernate.search.mapper.orm.massindexing.impl.MassIndexingIndexedTypeGroup;
 import org.hibernate.search.mapper.orm.massindexing.impl.MassIndexingTypeGroupLoader;
 import org.hibernate.search.mapper.orm.search.loading.EntityLoadingCacheLookupStrategy;
-import org.hibernate.search.mapper.orm.search.loading.impl.HibernateOrmComposableSearchEntityLoader;
 import org.hibernate.search.mapper.orm.search.loading.impl.MutableEntityLoadingOptions;
 import org.hibernate.search.mapper.orm.search.loading.impl.SearchLoadingIndexedTypeContext;
 import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.util.common.logging.impl.LoggerFactory;
 import org.hibernate.search.util.common.reflect.spi.ValueReadHandle;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeJoinMode;
 
-public class HibernateOrmNonEntityIdPropertyEntityLoadingStrategy<E, I> implements EntityLoadingStrategy<E, I> {
+public class HibernateOrmNonEntityIdPropertyEntityLoadingStrategy<E, I> implements HibernateOrmEntityLoadingStrategy<E, I> {
 
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	public static <I> EntityLoadingStrategy<?, ?> create(SessionFactoryImplementor sessionFactory,
+	public static <I> HibernateOrmEntityLoadingStrategy<?, ?> create(SessionFactoryImplementor sessionFactory,
 			EntityPersister entityPersister,
 			String documentIdSourcePropertyName, ValueReadHandle<I> documentIdSourceHandle) {
 		// By contract, the documentIdSourceHandle and the documentIdSourcePropertyName refer to the same property,
@@ -100,11 +105,25 @@ public class HibernateOrmNonEntityIdPropertyEntityLoadingStrategy<E, I> implemen
 		else {
 			includedTypesFilter = Collections.singleton( targetEntityTypeContext.typeIdentifier().javaClass() );
 		}
-		return new MassIndexingTypeGroupLoaderImpl<>( queryFactory, includedTypesFilter );
+
+		return new HibernateOrmMassIndexingTypeLoaderImpl( queryFactory, targetEntityTypeContexts, includedTypesFilter );
 	}
 
 	@Override
-	public <E2> HibernateOrmComposableSearchEntityLoader<E2> createLoader(
+	public MassIndexingTypeJoinMode calculateIndexingTypeGroupJoinMode(MassIndexingIndexedTypeGroup<?, ?> current, MassIndexingIndexedTypeGroup<?, ?> other) {
+		EntityPersister currentEntityPersister = current.commonSuperType().entityPersister();
+		EntityPersister otherEntityPersister = other.commonSuperType().entityPersister();
+		if ( HibernateOrmUtils.isSuperTypeOf( currentEntityPersister, otherEntityPersister ) ) {
+			return MassIndexingTypeJoinMode.FIRST;
+		}
+		if ( HibernateOrmUtils.isSuperTypeOf( otherEntityPersister, currentEntityPersister ) ) {
+			return MassIndexingTypeJoinMode.NEXT;
+		}
+		return MassIndexingTypeJoinMode.NONE;
+	}
+
+	@Override
+	public <E2> EntityLoader<EntityReference, E2> createLoader(
 			SearchLoadingIndexedTypeContext targetEntityTypeContext,
 			SessionImplementor session,
 			EntityLoadingCacheLookupStrategy cacheLookupStrategy, MutableEntityLoadingOptions loadingOptions) {
@@ -112,7 +131,7 @@ public class HibernateOrmNonEntityIdPropertyEntityLoadingStrategy<E, I> implemen
 	}
 
 	@Override
-	public <E2> HibernateOrmComposableSearchEntityLoader<? extends E2> createLoader(
+	public <E2> EntityLoader<EntityReference, E2> createLoader(
 			List<SearchLoadingIndexedTypeContext> targetEntityTypeContexts,
 			SessionImplementor session,
 			EntityLoadingCacheLookupStrategy cacheLookupStrategy, MutableEntityLoadingOptions loadingOptions) {
@@ -123,7 +142,7 @@ public class HibernateOrmNonEntityIdPropertyEntityLoadingStrategy<E, I> implemen
 		return doCreate( targetEntityTypeContexts.get( 0 ), session, cacheLookupStrategy, loadingOptions );
 	}
 
-	private <E2> HibernateOrmComposableSearchEntityLoader<E2> doCreate(
+	private <E2> EntityLoader<EntityReference, E2> doCreate(
 			SearchLoadingIndexedTypeContext targetEntityTypeContext,
 			SessionImplementor session,
 			EntityLoadingCacheLookupStrategy cacheLookupStrategy,
@@ -137,7 +156,7 @@ public class HibernateOrmNonEntityIdPropertyEntityLoadingStrategy<E, I> implemen
 		 * so this loader will actually return entities of type E2.
 		 */
 		@SuppressWarnings("unchecked")
-		HibernateOrmComposableSearchEntityLoader<E2> result = new HibernateOrmNonEntityIdPropertyEntityLoader<>(
+		EntityLoader<EntityReference, E2> result = new HibernateOrmNonEntityIdPropertyEntityLoader<>(
 				entityPersister, (TypeQueryFactory<E2, ?>) queryFactory,
 				documentIdSourcePropertyName, documentIdSourceHandle,
 				session, loadingOptions

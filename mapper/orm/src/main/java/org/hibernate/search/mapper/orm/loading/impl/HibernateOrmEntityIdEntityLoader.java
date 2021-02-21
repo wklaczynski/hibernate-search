@@ -21,7 +21,7 @@ import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.query.Query;
 import org.hibernate.search.mapper.orm.common.EntityReference;
 import org.hibernate.search.engine.common.timing.spi.Deadline;
-import org.hibernate.search.mapper.orm.search.loading.impl.HibernateOrmComposableSearchEntityLoader;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
 import org.hibernate.search.mapper.orm.search.loading.impl.EntityGraphHint;
 import org.hibernate.search.mapper.orm.search.loading.impl.MutableEntityLoadingOptions;
 
@@ -30,7 +30,7 @@ import org.hibernate.search.mapper.orm.search.loading.impl.MutableEntityLoadingO
  *
  * @param <E> The type of loaded entities.
  */
-class HibernateOrmEntityIdEntityLoader<E> implements HibernateOrmComposableSearchEntityLoader<E> {
+class HibernateOrmEntityIdEntityLoader<E> implements EntityLoader<EntityReference, E> {
 
 	private static final String IDS_PARAMETER_NAME = "ids";
 
@@ -55,30 +55,8 @@ class HibernateOrmEntityIdEntityLoader<E> implements HibernateOrmComposableSearc
 	}
 
 	@Override
-	public List<E> loadBlocking(List<EntityReference> references, Deadline deadline) {
-		if ( cacheLookupStrategyImplementor == null ) {
-			Long timeout = deadline == null ? null : deadline.remainingTimeMillis();
-			// Optimization: if we don't need to look up the cache, we don't need a map to store intermediary results.
-			try {
-				return doLoadEntities( references, timeout );
-			}
-			catch (QueryTimeoutException | javax.persistence.QueryTimeoutException | LockTimeoutException |
-					javax.persistence.LockTimeoutException e) {
-				if ( deadline == null ) {
-					// ORM-initiated timeout: just propagate the exception.
-					throw e;
-				}
-				throw deadline.forceTimeoutAndCreateException( e );
-			}
-		}
-		else {
-			return HibernateOrmComposableSearchEntityLoader.super.loadBlocking( references, deadline );
-		}
-	}
-
-	@Override
 	public void loadBlocking(List<EntityReference> references,
-			Map<? super EntityReference, ? super E> entitiesByReference, Deadline deadline) {
+			Map<EntityReference, E> entitiesByReference, Deadline deadline) {
 		List<? extends E> loadedEntities;
 		Long timeout = deadline == null ? null : deadline.remainingTimeMillis();
 		try {

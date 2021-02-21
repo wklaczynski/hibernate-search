@@ -13,6 +13,7 @@ import org.hibernate.search.engine.environment.bean.BeanReference;
 import org.hibernate.search.engine.environment.bean.BeanResolver;
 import org.hibernate.search.engine.mapper.mapping.building.spi.MappedIndexManagerBuilder;
 import org.hibernate.search.engine.mapper.mapping.spi.MappedIndexManager;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 import org.hibernate.search.mapper.pojo.automaticindexing.building.impl.PojoImplicitReindexingResolverBuildingHelper;
 import org.hibernate.search.mapper.pojo.automaticindexing.building.impl.PojoIndexingDependencyCollectorTypeNode;
 import org.hibernate.search.mapper.pojo.automaticindexing.impl.PojoImplicitReindexingResolver;
@@ -135,6 +136,11 @@ class PojoIndexedTypeManagerBuilder<E> {
 
 		MappedIndexManager indexManager = indexManagerBuilder.build();
 		extendedMappingCollector.indexManager( indexManager );
+
+		EntityLoadingFactory entityLoadingFactory = indexManagerBuilder.getEntityLoadingFactory();
+		if ( entityLoadingFactory != null ) {
+			extendedMappingCollector.entityLoadingFactory( entityLoadingFactory );
+		}
 
 		PojoIndexedTypeManager<?, E> typeManager = new PojoIndexedTypeManager<>(
 				entityName, typeModel.typeIdentifier(), typeModel.caster(),

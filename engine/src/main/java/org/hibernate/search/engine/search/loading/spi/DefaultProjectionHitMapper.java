@@ -8,6 +8,7 @@ package org.hibernate.search.engine.search.loading.spi;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,12 +20,12 @@ import org.hibernate.search.util.common.impl.CollectionHelper;
 public final class DefaultProjectionHitMapper<R, E> implements ProjectionHitMapper<R, E> {
 
 	private final DocumentReferenceConverter<R> documentReferenceConverter;
-	private final EntityLoader<R, ? extends E> objectLoader;
+	private final EntityLoader<R, E> objectLoader;
 
 	private final List<DocumentReference> referencesToLoad = new ArrayList<>();
 
 	public DefaultProjectionHitMapper(DocumentReferenceConverter<R> documentReferenceConverter,
-			EntityLoader<R, ? extends E> objectLoader) {
+			EntityLoader<R, E> objectLoader) {
 		this.documentReferenceConverter = documentReferenceConverter;
 		this.objectLoader = objectLoader;
 	}
@@ -37,7 +38,7 @@ public final class DefaultProjectionHitMapper<R, E> implements ProjectionHitMapp
 
 	@Override
 	public LoadingResult<R, E> loadBlocking(Deadline deadline) {
-		List<? extends E> loadedObjects;
+		List<E> loadedObjects;
 		if ( referencesToLoad.isEmpty() ) {
 			// Avoid the call to the objectLoader:
 			// it may be expensive even if there are no references to load.
@@ -45,8 +46,14 @@ public final class DefaultProjectionHitMapper<R, E> implements ProjectionHitMapp
 		}
 		else {
 			List<R> converted = referencesToLoad.stream().map( documentReferenceConverter::fromDocumentReference )
-					.collect( Collectors.toList() );
-			loadedObjects = objectLoader.loadBlocking( converted, deadline );
+				.collect( Collectors.toList() );
+			LinkedHashMap<R, E> objectsByReference = new LinkedHashMap<>( converted.size() );
+			objectLoader.loadBlocking( converted, objectsByReference, deadline );
+
+			loadedObjects = new ArrayList<>( converted.size() );
+			for ( R reference : converted ) {
+				loadedObjects.add( objectsByReference.get( reference ) );
+			}
 		}
 
 		return new DefaultLoadingResult<>( loadedObjects, documentReferenceConverter );

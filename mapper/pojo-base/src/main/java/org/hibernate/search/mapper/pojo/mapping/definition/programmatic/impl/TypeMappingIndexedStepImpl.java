@@ -20,6 +20,7 @@ class TypeMappingIndexedStepImpl implements TypeMappingIndexedStep, PojoTypeMeta
 	private final PojoRawTypeIdentifier<?> typeIdentifier;
 
 	private String backendName;
+	private String loadingName;
 	private String indexName;
 	private boolean enabled = true;
 	private RoutingBinder binder;
@@ -31,6 +32,12 @@ class TypeMappingIndexedStepImpl implements TypeMappingIndexedStep, PojoTypeMeta
 	@Override
 	public TypeMappingIndexedStep backend(String backendName) {
 		this.backendName = backendName;
+		return this;
+	}
+
+	@Override
+	public TypeMappingIndexedStep loading(String loadingName) {
+		this.loadingName = loadingName;
 		return this;
 	}
 
@@ -57,6 +64,9 @@ class TypeMappingIndexedStepImpl implements TypeMappingIndexedStep, PojoTypeMeta
 		PojoAdditionalMetadataCollectorIndexedTypeNode indexedCollector = collector.markAsIndexed( enabled );
 		if ( backendName != null ) {
 			indexedCollector.backendName( backendName );
+		}
+		if ( loadingName != null ) {
+			indexedCollector.loadingName( loadingName );
 		}
 		if ( binder != null ) {
 			indexedCollector.routingBinder( binder );

@@ -9,7 +9,6 @@ package org.hibernate.search.mapper.orm.search.loading.impl;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,45 +22,37 @@ class HibernateOrmByTypeEntityLoader<T> implements EntityLoader<EntityReference,
 
 	private static final Log log = LoggerFactory.make( Log.class, MethodHandles.lookup() );
 
-	private final Map<String, HibernateOrmComposableSearchEntityLoader<? extends T>> delegatesByEntityName;
+	private final Map<String, EntityLoader<EntityReference, T>> delegatesByEntityName;
 
-	HibernateOrmByTypeEntityLoader(Map<String, HibernateOrmComposableSearchEntityLoader<? extends T>> delegatesByEntityName) {
+	HibernateOrmByTypeEntityLoader(Map<String, EntityLoader<EntityReference, T>> delegatesByEntityName) {
 		this.delegatesByEntityName = delegatesByEntityName;
 	}
 
 	@Override
-	public List<T> loadBlocking(List<EntityReference> references, Deadline timeoutManager) {
-		LinkedHashMap<EntityReference, T> objectsByReference = new LinkedHashMap<>( references.size() );
-		Map<HibernateOrmComposableSearchEntityLoader<? extends T>, List<EntityReference>> referencesByDelegate = new HashMap<>();
+	public void loadBlocking(List<EntityReference> references, Map<EntityReference, T> entitymap, Deadline timeoutManager) {
+		Map<EntityLoader<EntityReference, T>, List<EntityReference>> referencesByDelegate = new HashMap<>();
 
 		// Split references by delegate (by entity type)
 		// Note that multiple entity types may share the same loader
 		for ( EntityReference reference : references ) {
-			objectsByReference.put( reference, null );
-			HibernateOrmComposableSearchEntityLoader<? extends T> delegate = delegateForType( reference.name() );
+			entitymap.put( reference, null );
+			EntityLoader<EntityReference, T> delegate = delegateForType( reference.name() );
 			referencesByDelegate.computeIfAbsent( delegate, ignored -> new ArrayList<>() )
 					.add( reference );
 		}
 
 		// Load all references
-		for ( Map.Entry<HibernateOrmComposableSearchEntityLoader<? extends T>, List<EntityReference>> entry :
+		for ( Map.Entry<EntityLoader<EntityReference, T>, List<EntityReference>> entry :
 				referencesByDelegate.entrySet() ) {
-			HibernateOrmComposableSearchEntityLoader<? extends T> delegate = entry.getKey();
+			EntityLoader<EntityReference, T> delegate = entry.getKey();
 			List<EntityReference> referencesForDelegate = entry.getValue();
 
-			delegate.loadBlocking( referencesForDelegate, objectsByReference, timeoutManager );
+			delegate.loadBlocking( referencesForDelegate, entitymap, timeoutManager );
 		}
-
-		// Re-create the list of objects in the same order
-		List<T> result = new ArrayList<>( references.size() );
-		for ( EntityReference reference : references ) {
-			result.add( objectsByReference.get( reference ) );
-		}
-		return result;
 	}
 
-	private HibernateOrmComposableSearchEntityLoader<? extends T> delegateForType(String entityName) {
-		HibernateOrmComposableSearchEntityLoader<? extends T> delegate = delegatesByEntityName.get( entityName );
+	private EntityLoader<EntityReference, T> delegateForType(String entityName) {
+		EntityLoader<EntityReference, T> delegate = delegatesByEntityName.get( entityName );
 		if ( delegate == null ) {
 			throw log.unexpectedSearchHitEntityName( entityName, delegatesByEntityName.keySet() );
 		}

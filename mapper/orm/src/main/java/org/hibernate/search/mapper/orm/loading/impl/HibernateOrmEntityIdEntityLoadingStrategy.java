@@ -18,17 +18,19 @@ import org.hibernate.engine.spi.SessionFactoryImplementor;
 import org.hibernate.engine.spi.SessionImplementor;
 import org.hibernate.metamodel.spi.MetamodelImplementor;
 import org.hibernate.persister.entity.EntityPersister;
+import org.hibernate.search.engine.search.loading.spi.EntityLoader;
+import org.hibernate.search.mapper.orm.common.EntityReference;
 import org.hibernate.search.mapper.orm.common.impl.HibernateOrmUtils;
+import org.hibernate.search.mapper.orm.loading.HibernateOrmEntityLoadingStrategy;
 import org.hibernate.search.mapper.orm.massindexing.impl.HibernateOrmMassIndexingIndexedTypeContext;
 import org.hibernate.search.mapper.orm.massindexing.impl.MassIndexingTypeGroupLoader;
 import org.hibernate.search.mapper.orm.search.loading.EntityLoadingCacheLookupStrategy;
-import org.hibernate.search.mapper.orm.search.loading.impl.HibernateOrmComposableSearchEntityLoader;
 import org.hibernate.search.mapper.orm.search.loading.impl.MutableEntityLoadingOptions;
 import org.hibernate.search.mapper.orm.search.loading.impl.SearchLoadingIndexedTypeContext;
 
-public class HibernateOrmEntityIdEntityLoadingStrategy<E, I> implements EntityLoadingStrategy<E, I> {
+public class HibernateOrmEntityIdEntityLoadingStrategy<E, I> implements HibernateOrmEntityLoadingStrategy<E, I> {
 
-	public static EntityLoadingStrategy<?, ?> create(SessionFactoryImplementor sessionFactory,
+	public static HibernateOrmEntityLoadingStrategy<?, ?> create(SessionFactoryImplementor sessionFactory,
 			EntityPersister entityPersister) {
 		EntityPersister rootEntityPersister = HibernateOrmUtils.toRootEntityType( sessionFactory, entityPersister );
 		TypeQueryFactory<?, ?> queryFactory = TypeQueryFactory.create( sessionFactory, rootEntityPersister,
@@ -61,7 +63,7 @@ public class HibernateOrmEntityIdEntityLoadingStrategy<E, I> implements EntityLo
 	}
 
 	@Override
-	public <E2> HibernateOrmComposableSearchEntityLoader<E2> createLoader(
+	public <E2> EntityLoader<EntityReference, E2> createLoader(
 			SearchLoadingIndexedTypeContext targetEntityTypeContext,
 			SessionImplementor session,
 			EntityLoadingCacheLookupStrategy cacheLookupStrategy, MutableEntityLoadingOptions loadingOptions) {
@@ -71,14 +73,14 @@ public class HibernateOrmEntityIdEntityLoadingStrategy<E, I> implements EntityLo
 		 * in particular runtime checks handling edge cases.
 		 */
 		@SuppressWarnings("unchecked")
-		HibernateOrmComposableSearchEntityLoader<E2> result = (HibernateOrmComposableSearchEntityLoader<E2>) doCreate(
+		EntityLoader<EntityReference, E2> result = (EntityLoader<EntityReference, E2>) doCreate(
 				targetEntityTypeContext.entityPersister(), session, cacheLookupStrategy, loadingOptions
 		);
 		return result;
 	}
 
 	@Override
-	public <E2> HibernateOrmComposableSearchEntityLoader<? extends E2> createLoader(
+	public <E2> EntityLoader<EntityReference, E2> createLoader(
 			List<SearchLoadingIndexedTypeContext> targetEntityTypeContexts,
 			SessionImplementor session, EntityLoadingCacheLookupStrategy cacheLookupStrategy,
 			MutableEntityLoadingOptions loadingOptions) {
@@ -99,7 +101,7 @@ public class HibernateOrmEntityIdEntityLoadingStrategy<E, I> implements EntityLo
 		 * See hasExpectedType() and its callers for more information.
 		 */
 		@SuppressWarnings("unchecked")
-		HibernateOrmComposableSearchEntityLoader<E2> result = (HibernateOrmComposableSearchEntityLoader<E2>) doCreate(
+		EntityLoader<EntityReference, E2> result = (EntityLoader<EntityReference, E2>) doCreate(
 				commonSuperType, session, cacheLookupStrategy, loadingOptions
 		);
 
@@ -121,10 +123,10 @@ public class HibernateOrmEntityIdEntityLoadingStrategy<E, I> implements EntityLo
 				includedTypesFilter.add( includedType.typeIdentifier().javaClass() );
 			}
 		}
-		return new MassIndexingTypeGroupLoaderImpl<>( queryFactory, includedTypesFilter );
+		return new HibernateOrmMassIndexingTypeLoaderImpl( queryFactory, targetEntityTypeContexts, includedTypesFilter );
 	}
 
-	private HibernateOrmComposableSearchEntityLoader<?> doCreate(EntityPersister entityPersister,
+	private EntityLoader<EntityReference, ?> doCreate(EntityPersister entityPersister,
 			SessionImplementor session,
 			EntityLoadingCacheLookupStrategy cacheLookupStrategy, MutableEntityLoadingOptions loadingOptions) {
 		if ( !rootEntityPersister.getMappedClass().isAssignableFrom( entityPersister.getMappedClass() ) ) {

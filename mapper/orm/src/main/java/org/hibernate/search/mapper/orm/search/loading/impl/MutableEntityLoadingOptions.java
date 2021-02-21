@@ -8,6 +8,7 @@ package org.hibernate.search.mapper.orm.search.loading.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.persister.entity.EntityPersister;
 import org.hibernate.search.util.common.impl.Contracts;
@@ -16,9 +17,11 @@ public class MutableEntityLoadingOptions {
 	private int fetchSize;
 
 	private List<EntityGraphHint> entityGraphHints;
+	private final Map<String, Object> options;
 
-	public MutableEntityLoadingOptions(SearchLoadingMappingContext mappingContext) {
+	public MutableEntityLoadingOptions(SearchLoadingMappingContext mappingContext, Map<String, Object> options) {
 		this.fetchSize = mappingContext.fetchSize();
+		this.options = options;
 	}
 
 	public int fetchSize() {
@@ -28,6 +31,19 @@ public class MutableEntityLoadingOptions {
 	public void fetchSize(int fetchSize) {
 		Contracts.assertStrictlyPositive( fetchSize, "fetchSize" );
 		this.fetchSize = fetchSize;
+	}
+
+	public Object option(String name) {
+		return options.get( name );
+	}
+
+	public void option(String name, Object value) {
+		Contracts.assertNotNull( name, "option" );
+		options.put( name, value );
+	}
+
+	public Map<String, Object> options() {
+		return options;
 	}
 
 	public EntityGraphHint<?> entityGraphHintOrNullForType(EntityPersister entityPersister) {

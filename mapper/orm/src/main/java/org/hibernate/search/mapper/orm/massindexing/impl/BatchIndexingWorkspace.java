@@ -45,15 +45,12 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 	// loading options
 	private final CacheMode cacheMode;
-	private final int objectLoadingBatchSize;
 
-	private final long objectsLimit;
-
-	private final int idFetchSize;
 	private final Integer transactionTimeout;
 
 	private final List<CompletableFuture<?>> identifierProducingFutures = new ArrayList<>();
 	private final List<CompletableFuture<?>> indexingFutures = new ArrayList<>();
+	private final HibernateOrmMassIndexingTypeIndexer<E, I> typeIndexer;
 
 	BatchIndexingWorkspace(HibernateOrmMassIndexingMappingContext mappingContext,
 			DetachedBackendSessionContext sessionContext,
@@ -68,7 +65,6 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 		this.typeGroup = typeGroup;
 		this.typeGroupLoader = typeGroup.createLoader();
-		this.idFetchSize = idFetchSize;
 		this.transactionTimeout = transactionTimeout;
 
 		//thread pool sizing:
@@ -76,12 +72,19 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 		//loading options:
 		this.cacheMode = cacheMode;
-		this.objectLoadingBatchSize = objectLoadingBatchSize;
 
 		//pipelining queues:
 		this.primaryKeyStream = new ProducerConsumerQueue<>( 1 );
 
-		this.objectsLimit = objectsLimit;
+		typeIndexer = new HibernateOrmMassIndexingTypeIndexer(
+				mappingContext,
+				sessionContext.tenantIdentifier(),
+				notifier,
+				typeGroupLoader,
+				primaryKeyStream,
+				cacheMode,
+				objectLoadingBatchSize,
+				objectsLimit, idFetchSize );
 	}
 
 	@Override
@@ -90,8 +93,8 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 			throw new AssertionFailure( "BatchIndexingWorkspace instance not expected to be reused" );
 		}
 
-		final BatchTransactionalContext transactionalContext =
-				new BatchTransactionalContext( mappingContext.sessionFactory() );
+		final BatchTransactionalContext transactionalContext
+				= new BatchTransactionalContext( mappingContext.sessionFactory() );
 		// First start the consumers, then the producers (reverse order):
 		startIndexing();
 		startProducingPrimaryKeys( transactionalContext );
@@ -128,12 +131,10 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 				getNotifier(),
 				new IdentifierProducer<>(
 						mappingContext.sessionFactory(), sessionContext.tenantIdentifier(),
+						typeIndexer,
 						getNotifier(),
-						typeGroup, typeGroupLoader,
-						primaryKeyStream,
-						objectLoadingBatchSize,
-						objectsLimit,
-						idFetchSize
+						typeGroup,
+						primaryKeyStream
 				),
 				transactionTimeout, sessionContext.tenantIdentifier()
 		);
@@ -152,9 +153,11 @@ public class BatchIndexingWorkspace<E, I> extends FailureHandledRunnable {
 
 	private void startIndexing() {
 		final Runnable documentOutputter = new IdentifierConsumerDocumentProducer<>(
-				mappingContext, sessionContext.tenantIdentifier(),
+				mappingContext,
+				sessionContext.tenantIdentifier(),
+				typeIndexer,
 				getNotifier(),
-				typeGroup, typeGroupLoader,
+				typeGroup,
 				primaryKeyStream,
 				cacheMode,
 				transactionTimeout

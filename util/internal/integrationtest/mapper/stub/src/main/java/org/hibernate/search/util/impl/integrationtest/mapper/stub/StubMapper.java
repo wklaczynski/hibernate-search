@@ -50,11 +50,11 @@ class StubMapper implements Mapper<StubMappingPartialBuildState>, IndexedEntityB
 	}
 
 	@Override
-	public void prepareIndexedTypes(Consumer<Optional<String>> backendNameCollector) {
+	public void prepareIndexedTypes(Consumer<Optional<String>> backendNameCollector, Consumer<Optional<String>> loadingNameCollector) {
 		contributorProvider.typesContributedTo()
 				.forEach( type -> {
 					try {
-						prepareType( type, backendNameCollector );
+						prepareType( type, backendNameCollector, loadingNameCollector );
 					}
 					catch (RuntimeException e) {
 						failureCollector.withContext( EventContexts.fromType( type ) )
@@ -63,9 +63,12 @@ class StubMapper implements Mapper<StubMappingPartialBuildState>, IndexedEntityB
 				} );
 	}
 
-	private void prepareType(MappableTypeModel type, Consumer<Optional<String>> backendNameCollector) {
+	private void prepareType(MappableTypeModel type, Consumer<Optional<String>> backendNameCollector, Consumer<Optional<String>> loadingNameCollector) {
 		getMappedIndex( type )
-				.ifPresent( mappedIndex -> backendNameCollector.accept( mappedIndex.backendName() ) );
+			.ifPresent( mappedIndex -> {
+				backendNameCollector.accept( mappedIndex.backendName() );
+				loadingNameCollector.accept( mappedIndex.loadingName() );
+			} );
 	}
 
 	@Override
@@ -88,6 +91,7 @@ class StubMapper implements Mapper<StubMappingPartialBuildState>, IndexedEntityB
 			MappedIndexManagerBuilder indexManagerBuilder = indexManagerFactory.createMappedIndexManager(
 					this,
 					mappedIndex.backendName(),
+					mappedIndex.loadingName(),
 					mappedIndex.name(),
 					type.name(),
 					multiTenancyEnabled

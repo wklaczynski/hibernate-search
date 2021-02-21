@@ -22,6 +22,13 @@ public interface TypeMappingIndexedStep {
 	TypeMappingIndexedStep backend(String backendName);
 
 	/**
+	 * @param loadingName The name of the entity loading.
+	 * @return {@code this}, for method chaining.
+	 * @see Indexed#loading()
+	 */
+	TypeMappingIndexedStep loading(String loadingName);
+
+	/**
 	 * @param indexName The name of the index.
 	 * @return {@code this}, for method chaining.
 	 * @see Indexed#index()

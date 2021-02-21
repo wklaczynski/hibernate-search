@@ -8,6 +8,8 @@ package org.hibernate.search.engine.environment.bean;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * An object holding a bean instance, and allowing to release it.
@@ -35,7 +37,8 @@ public interface BeanHolder<T> extends AutoCloseable {
 	 * @throws RuntimeException If an error occurs while releasing resources.
 	 */
 	@Override
-	void close();
+	default void close() {
+	};
 
 	/**
 	 * @param dependencies Dependencies that should be closed eventually.
@@ -44,6 +47,19 @@ public interface BeanHolder<T> extends AutoCloseable {
 	 */
 	default BeanHolder<T> withDependencyAutoClosing(BeanHolder<?> ... dependencies) {
 		return new DependencyClosingBeanHolder<>( this, Arrays.asList( dependencies ) );
+	}
+
+	/**
+	 * Returns an empty {@code BeanHolder} instance. No value is present for this
+	 * {@code BeanHolder}.
+	 *
+	 * @param <T> The type of the non-existent value
+	 * @return an empty {@code BeanHolder}
+	 */
+	static <T> BeanHolder<T> empty() {
+		@SuppressWarnings("unchecked")
+		BeanHolder<T> t = () -> null;
+		return t;
 	}
 
 	/**
@@ -65,6 +81,82 @@ public interface BeanHolder<T> extends AutoCloseable {
 	 */
 	static <T> BeanHolder<List<T>> of(List<? extends BeanHolder<? extends T>> beanHolders) {
 		return new CompositeBeanHolder<>( beanHolders );
+	}
+
+	/**
+	 * Returns an {@code BeanHolder} describing the given value, if
+	 * non-{@code null}, otherwise returns an empty {@code BeanHolder}.
+	 *
+	 * @param instance The bean instance.
+	 * @param <T> The type of the bean instance.
+	 * @return an {@code BeanHolder}  method returns the given instance,
+	 * is non-{@code null}, otherwise an empty {@code BeanHolder}
+	 */
+	static <T> BeanHolder<T> ofNullable(T instance) {
+		return instance == null ? empty() : of( instance );
+	}
+
+	/**
+	 * If a istance is present, returns {@code true}, otherwise {@code false}.
+	 *
+	 * @return {@code true} if a value is present, otherwise {@code false}
+	 */
+	default boolean isPresent() {
+		return get() != null;
+	}
+
+	/**
+	 * If a istance is not present, returns {@code true}, otherwise
+	 * {@code false}.
+	 *
+	 * @return {@code true} if a value is not present, otherwise {@code false}
+	 * @since 11
+	 */
+	default boolean isEmpty() {
+		return get() == null;
+	}
+
+	/**
+	 * If a istance is present, performs the given action with the value,
+	 * otherwise does nothing.
+	 *
+	 * @param <R>  the type of input to the {@code get()} function, and to the
+         * composed function
+	 * @param action the action to be performed, if a value is present
+	 * @return {@code true} if a value is present, otherwise {@code false}
+	 * @throws NullPointerException if value is present and the given action is
+	 * {@code null}
+	 */
+	default <R extends T> R ifPresentGetAndMap(Function<? super T, R> action) {
+		T value = get();
+		if ( value != null ) {
+			return action.apply( value );
+		}
+		return null;
+	}
+
+	/**
+	 * If a istance is present, performs the given action with the value,
+	 * otherwise performs the given empty-based action.
+	 *
+	 * @param <R>  the type of input to the {@code get()} function, and to the
+         * composed function
+	 * @param action the action to be performed, if a value is present
+	 * @param emptyAction the empty-based action to be performed, if no value is
+	 * present
+	 * @return {@code true} if a value is present, otherwise {@code false}
+	 * @throws NullPointerException if a value is present and the given action
+	 * is {@code null}, or no value is present and the given empty-based
+	 * action is {@code null}.
+	 */
+	default <R extends T> R ifPresentOrElseGetAndMap(Function<? super T, R> action, Supplier<R> emptyAction) {
+		T value = get();
+		if ( value != null ) {
+			return action.apply( value );
+		}
+		else {
+			return emptyAction.get();
+		}
 	}
 
 }

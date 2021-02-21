@@ -7,8 +7,13 @@
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
 import java.util.Set;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeJoinMode;
 
 public interface MassIndexingTypeLoadingStrategy<E, I> {
+
+	default MassIndexingTypeJoinMode calculateIndexingTypeGroupJoinMode(MassIndexingIndexedTypeGroup<?, ?> current, MassIndexingIndexedTypeGroup<?, ?> other) {
+		return MassIndexingTypeJoinMode.NONE;
+	}
 
 	MassIndexingTypeGroupLoader<E, I> createLoader(
 			Set<? extends HibernateOrmMassIndexingIndexedTypeContext<? extends E>> targetEntityTypeContexts);

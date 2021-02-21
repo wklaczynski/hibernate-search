@@ -395,4 +395,16 @@ public interface Log extends BasicLogger {
 			+ " Otherwise, use a valid bean retrieval prefix among the following: %3$s.")
 	BeanNotFoundException invalidBeanRetrieval(String beanReference, String invalidPrefix,
 			List<String> validPrefixes, @Cause Exception e);
+
+	@Message(id = ID_OFFSET + 94,
+			value = "Unable to resolve entity loading factory type:"
+					+ " configuration property '%1$s' is not set, and there isn't any entity loading factory in the classpath."
+					+ " Check that you added the desired entity loading factory to your project's dependencies.")
+	SearchException noEntityLoadingRegistered(String propertyKey);
+
+	@Message(id = ID_OFFSET + 95,
+			value = "Ambiguous entity loading factory type:"
+					+ " configuration property '%1$s' is not set, and multiple entity loading factory types are present in the classpath."
+					+ " Set property '%1$s' to one of the following to select the entity loading factory type: %2$s")
+	SearchException multipleEntityLoadingRegistered(String propertyKey, Collection<String> loadingTypeNames);
 }

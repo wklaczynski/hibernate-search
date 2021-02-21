@@ -34,6 +34,7 @@ import org.hibernate.search.mapper.orm.bootstrap.spi.HibernateOrmIntegrationBoot
 import org.hibernate.search.engine.cfg.spi.ConfigurationPropertyChecker;
 import org.hibernate.search.mapper.orm.bootstrap.spi.HibernateOrmIntegrationBooterBehavior;
 import org.hibernate.search.mapper.orm.cfg.spi.HibernateOrmMapperSpiSettings;
+import org.hibernate.search.mapper.orm.loading.impl.HibernateOrmDefaultEntityLoaderFactory;
 import org.hibernate.search.mapper.orm.logging.impl.Log;
 import org.hibernate.search.mapper.orm.mapping.impl.HibernateOrmMapping;
 import org.hibernate.search.mapper.orm.mapping.impl.HibernateSearchContextProviderService;
@@ -245,6 +246,7 @@ public class HibernateOrmIntegrationBooterImpl implements HibernateOrmIntegratio
 			builder.classResolver( classAndResourceAndServiceResolver );
 			builder.resourceResolver( classAndResourceAndServiceResolver );
 			builder.serviceResolver( classAndResourceAndServiceResolver );
+			builder.entityLoadingFactoryType( HibernateOrmDefaultEntityLoaderFactory.class );
 
 			if ( managedBeanRegistryService.isPresent() ) {
 				BeanContainer beanContainer = managedBeanRegistryService.get().getBeanContainer();

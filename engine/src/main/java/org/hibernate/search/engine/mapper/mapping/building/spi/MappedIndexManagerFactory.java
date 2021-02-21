@@ -16,7 +16,7 @@ public interface MappedIndexManagerFactory {
 
 	MappedIndexManagerBuilder createMappedIndexManager(
 			IndexedEntityBindingMapperContext mapperContext,
-			Optional<String> backendName, String indexName,
+			Optional<String> backendName, Optional<String> loaderName, String indexName,
 			String mappedTypeName, boolean multiTenancyEnabled);
 
 }

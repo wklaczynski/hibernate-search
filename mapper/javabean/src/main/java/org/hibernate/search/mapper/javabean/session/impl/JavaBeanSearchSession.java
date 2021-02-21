@@ -25,13 +25,19 @@ import org.hibernate.search.mapper.javabean.work.impl.SearchIndexerImpl;
 import org.hibernate.search.mapper.javabean.work.impl.SearchIndexingPlanImpl;
 import org.hibernate.search.mapper.javabean.common.impl.EntityReferenceImpl;
 import org.hibernate.search.engine.backend.common.spi.EntityReferenceFactory;
+import org.hibernate.search.engine.backend.session.spi.BackendSessionContext;
+import org.hibernate.search.engine.backend.session.spi.DetachedBackendSessionContext;
+import org.hibernate.search.mapper.javabean.massindexing.MassIndexer;
+import org.hibernate.search.mapper.javabean.scope.impl.JavaBeanScopeSessionContext;
+import org.hibernate.search.mapper.javabean.search.loading.dsl.SearchLoadingOptionsStep;
 import org.hibernate.search.mapper.pojo.model.spi.PojoRuntimeIntrospector;
 import org.hibernate.search.mapper.pojo.session.spi.AbstractPojoSearchSession;
+import org.hibernate.search.mapper.pojo.work.spi.PojoIndexer;
 import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.util.common.impl.Futures;
 
 public class JavaBeanSearchSession extends AbstractPojoSearchSession<EntityReference>
-		implements SearchSession, DocumentReferenceConverter<EntityReference>,
+		implements SearchSession, JavaBeanScopeSessionContext, DocumentReferenceConverter<EntityReference>,
 		EntityReferenceFactory<EntityReference> {
 
 	private final JavaBeanSearchSessionMappingContext mappingContext;
@@ -67,18 +73,28 @@ public class JavaBeanSearchSession extends AbstractPojoSearchSession<EntityRefer
 	}
 
 	@Override
+	public PojoIndexer createIndexer() {
+		return super.createIndexer();
+	}
+
+	@Override
 	public PojoRuntimeIntrospector runtimeIntrospector() {
 		return PojoRuntimeIntrospector.simple();
 	}
 
 	@Override
-	public <T> SearchQuerySelectStep<?, EntityReference, ?, ?, ?, ?> search(Collection<? extends Class<? extends T>> types) {
+	public <T> SearchQuerySelectStep<?, EntityReference, T, SearchLoadingOptionsStep<T>, ?, ?> search(Collection<? extends Class<? extends T>> types) {
 		return search( scope( types ) );
 	}
 
 	@Override
-	public <T> SearchQuerySelectStep<?, EntityReference, ?, ?, ?, ?> search(SearchScope<T> scope) {
+	public <T> SearchQuerySelectStep<?, EntityReference, T, SearchLoadingOptionsStep<T>, ?, ?> search(SearchScope<T> scope) {
 		return search( (SearchScopeImpl<T>) scope );
+	}
+
+	@Override
+	public MassIndexer massIndexer(Collection<? extends Class<?>> types) {
+		return scope( types ).massIndexer( DetachedBackendSessionContext.of( this ) );
 	}
 
 	@Override
@@ -140,8 +156,18 @@ public class JavaBeanSearchSession extends AbstractPojoSearchSession<EntityRefer
 		return new EntityReferenceImpl( typeContext.typeIdentifier(), typeContext.name(), identifier );
 	}
 
-	private <T> SearchQuerySelectStep<?, EntityReference, ?, ?, ?, ?> search(SearchScopeImpl<T> scope) {
-		return scope.search( this, this );
+	private <T> SearchQuerySelectStep<?, EntityReference, T, SearchLoadingOptionsStep<T>, ?, ?> search(SearchScopeImpl<T> scope) {
+		return scope.search( this );
+	}
+
+	@Override
+	public BackendSessionContext backendSessionContext() {
+		return this;
+	}
+
+	@Override
+	public DocumentReferenceConverter<EntityReference> referenceHitMapper() {
+		return this;
 	}
 
 	public static class Builder

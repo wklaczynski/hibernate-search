@@ -17,6 +17,12 @@ public interface PojoAdditionalMetadataCollectorIndexedTypeNode extends PojoAddi
 	void backendName(String backendName);
 
 	/**
+	 * @param loadingName The name of the entity loading where this type should be load entity data,
+	 * or {@code null} (the default) to target the default entity loading.
+	 */
+	void loadingName(String loadingName);
+
+	/**
 	 * @param indexName The name of the backend where this type should be indexed,
 	 * or {@code null} (the default) to derive the index name from the entity type.
 	 */

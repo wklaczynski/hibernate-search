@@ -20,6 +20,7 @@ import org.hibernate.search.engine.search.query.dsl.SearchQuerySelectStep;
 import org.hibernate.search.engine.search.sort.dsl.SearchSortFactory;
 import org.hibernate.search.mapper.javabean.common.EntityReference;
 import org.hibernate.search.mapper.javabean.entity.SearchIndexedEntity;
+import org.hibernate.search.mapper.javabean.massindexing.MassIndexer;
 
 /**
  * Represents a set of types and the corresponding indexes,
@@ -76,7 +77,7 @@ public interface SearchScope<E> {
 	 * @return A projection factory.
 	 * @see SearchProjectionFactory
 	 */
-	SearchProjectionFactory<EntityReference, ?> projection();
+	SearchProjectionFactory<EntityReference, E> projection();
 
 	/**
 	 * Initiate the building of a search aggregation that will be valid for the indexes in this scope.
@@ -98,5 +99,30 @@ public interface SearchScope<E> {
 	 * @return A set containing one {@link SearchIndexedEntity} for each indexed entity in this scope.
 	 */
 	Set<? extends SearchIndexedEntity<? extends E>> includedTypes();
+
+	/**
+	 * Create a {@link MassIndexer} for the indexes mapped to types in this scope, or to any of their sub-types.
+	 * <p>
+	 * This method only works for single-tenant applications.
+	 * If multi-tenancy is enabled, use {@link #massIndexer(String)} instead.
+	 * <p>
+	 * {@link MassIndexer} instances cannot be reused.
+	 *
+	 * @return A {@link MassIndexer}.
+	 */
+	MassIndexer massIndexer();
+
+	/**
+	 * Create a {@link MassIndexer} for the indexes mapped to types in this scope, or to any of their sub-types.
+	 * <p>
+	 * This method only works for multi-tenant applications.
+	 * If multi-tenancy is disabled, use {@link #massIndexer()} instead.
+	 * <p>
+	 * {@link MassIndexer} instances cannot be reused.
+	 *
+	 * @param tenantId The identifier of the tenant whose index content should be targeted.
+	 * @return A {@link MassIndexer}.
+	 */
+	MassIndexer massIndexer(String tenantId);
 
 }

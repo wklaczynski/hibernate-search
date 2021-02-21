@@ -62,6 +62,7 @@ import org.hibernate.search.engine.reporting.spi.ContextualFailureCollector;
 import org.hibernate.search.util.common.AssertionFailure;
 import org.hibernate.search.util.common.SearchException;
 import org.hibernate.search.engine.environment.thread.spi.ThreadProvider;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 import org.hibernate.search.util.common.impl.SuppressingCloser;
 
 public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
@@ -86,6 +87,7 @@ public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
 	private ResourceResolver resourceResolver;
 	private ServiceResolver serviceResolver;
 	private BeanProvider beanManagerBeanProvider;
+	private Class<? extends EntityLoadingFactory> defaultEntityLoadingFactoryType;
 	private boolean frozen = false;
 
 	public SearchIntegrationBuilderImpl(ConfigurationPropertySource propertySource,
@@ -115,6 +117,12 @@ public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
 	@Override
 	public SearchIntegrationBuilder serviceResolver(ServiceResolver serviceResolver) {
 		this.serviceResolver = serviceResolver;
+		return this;
+	}
+
+	@Override
+	public SearchIntegrationBuilder entityLoadingFactoryType(Class<? extends EntityLoadingFactory> entityLoadingFactoryType) {
+		this.defaultEntityLoadingFactoryType = entityLoadingFactoryType;
 		return this;
 	}
 
@@ -230,8 +238,9 @@ public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
 
 			// Step #3: determine indexed types and the necessary backends
 			Set<Optional<String>> backendNames = new LinkedHashSet<>();
+			Set<Optional<String>> loadingNames = new LinkedHashSet<>();
 			for ( MappingBuildingState<?, ?> mappingBuildingState : mappingBuildingStates ) {
-				mappingBuildingState.determineIndexedTypes( backendNames );
+				mappingBuildingState.determineIndexedTypes( backendNames, loadingNames );
 			}
 			checkingRootFailures = true;
 			failureCollector.checkNoFailure();
@@ -243,7 +252,13 @@ public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
 			failureCollector.checkNoFailure();
 			checkingRootFailures = false;
 
-			// Step #5: map indexed types and create the corresponding index managers
+			// Step #5: create loadings that will be necessary for mappers
+			indexManagerBuildingStateHolder.createEntityLoadings( loadingNames, defaultEntityLoadingFactoryType );
+			checkingRootFailures = true;
+			failureCollector.checkNoFailure();
+			checkingRootFailures = false;
+
+			// Step #6: map indexed types and create the corresponding index managers
 			MappedIndexManagerFactory mappedIndexManagerFactory =
 					new MappedIndexManagerFactoryImpl( indexManagerBuildingStateHolder );
 			for ( MappingBuildingState<?, ?> mappingBuildingState : mappingBuildingStates ) {
@@ -253,7 +268,7 @@ public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
 			failureCollector.checkNoFailure();
 			checkingRootFailures = false;
 
-			// Step #6: create mappings
+			// Step #7: create mappings
 			for ( MappingBuildingState<?, ?> mappingBuildingState : mappingBuildingStates ) {
 				mappingBuildingState.partiallyBuildAndAddTo( partiallyBuiltMappings );
 			}
@@ -347,8 +362,8 @@ public class SearchIntegrationBuilderImpl implements SearchIntegrationBuilder {
 			mapper = mappingInitiator.createMapper( buildContext, contributorProvider );
 		}
 
-		void determineIndexedTypes(Set<Optional<String>> backendNames) {
-			mapper.prepareIndexedTypes( backendNames::add );
+		void determineIndexedTypes(Set<Optional<String>> backendNames, Set<Optional<String>> loadingNames) {
+			mapper.prepareIndexedTypes( backendNames::add, loadingNames::add );
 		}
 
 		void mapIndexedTypes(MappedIndexManagerFactory indexManagerFactory) {

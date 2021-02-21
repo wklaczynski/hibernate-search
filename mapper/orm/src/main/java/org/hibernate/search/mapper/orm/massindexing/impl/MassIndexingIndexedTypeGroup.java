@@ -14,10 +14,9 @@ import java.util.ListIterator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.hibernate.persister.entity.EntityPersister;
-import org.hibernate.search.mapper.orm.common.impl.HibernateOrmUtils;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeJoinMode;
 
-class MassIndexingIndexedTypeGroup<E, I> {
+public class MassIndexingIndexedTypeGroup<E, I> {
 
 	/**
 	 * Group indexed types by their closest common supertype,
@@ -109,13 +108,12 @@ class MassIndexingIndexedTypeGroup<E, I> {
 		if ( !loadingStrategy.equals( other.loadingStrategy ) ) {
 			return null;
 		}
-		EntityPersister entityPersister = commonSuperType.entityPersister();
-		EntityPersister otherEntityPersister = other.commonSuperType.entityPersister();
-		if ( HibernateOrmUtils.isSuperTypeOf( entityPersister, otherEntityPersister ) ) {
-			return withAdditionalTypes( ( (MassIndexingIndexedTypeGroup<? extends E, I>) other ).includedTypes );
-		}
-		if ( HibernateOrmUtils.isSuperTypeOf( otherEntityPersister, entityPersister ) ) {
-			return ( (MassIndexingIndexedTypeGroup<? super E, I>) other ).withAdditionalTypes( includedTypes );
+		MassIndexingTypeJoinMode joinMode = loadingStrategy.calculateIndexingTypeGroupJoinMode( this, other );
+		switch ( joinMode ) {
+			case FIRST:
+				return withAdditionalTypes( ((MassIndexingIndexedTypeGroup<E, I>) other).includedTypes );
+			case NEXT:
+				return ((MassIndexingIndexedTypeGroup<E, I>) other).withAdditionalTypes( includedTypes );
 		}
 		return null;
 	}

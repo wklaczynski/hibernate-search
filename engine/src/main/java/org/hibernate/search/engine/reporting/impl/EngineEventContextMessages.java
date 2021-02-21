@@ -60,8 +60,14 @@ public interface EngineEventContextMessages {
 	@Message(value = "default backend")
 	String defaultBackend();
 
+	@Message(value = "default entity loading")
+	String defaultEntityLoading();
+
 	@Message(value = "backend '%1$s'")
 	String backend(String name);
+
+	@Message(value = "loading '%1$s'")
+	String loading(String name);
 
 	@Message(value = "index '%1$s'")
 	String index(String name);

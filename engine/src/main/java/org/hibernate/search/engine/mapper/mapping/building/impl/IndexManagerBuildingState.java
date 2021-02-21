@@ -8,11 +8,14 @@ package org.hibernate.search.engine.mapper.mapping.building.impl;
 
 import org.hibernate.search.engine.backend.document.model.dsl.spi.IndexSchemaRootNodeBuilder;
 import org.hibernate.search.engine.backend.index.spi.IndexManagerImplementor;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 
 
 public interface IndexManagerBuildingState {
 
 	String getIndexName();
+
+	EntityLoadingFactory getEntityLoadingFactory();
 
 	IndexSchemaRootNodeBuilder getSchemaRootNodeBuilder();
 

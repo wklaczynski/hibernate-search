@@ -6,16 +6,9 @@
  */
 package org.hibernate.search.mapper.orm.massindexing.impl;
 
-import org.hibernate.engine.spi.SessionImplementor;
-import org.hibernate.engine.spi.SharedSessionContractImplementor;
-import org.hibernate.query.Query;
+import org.hibernate.search.mapper.orm.massindexing.spi.MassIndexingTypeIndexer;
 
 public interface MassIndexingTypeGroupLoader<E, I> {
 
-	Query<Long> createCountQuery(SharedSessionContractImplementor session);
-
-	Query<I> createIdentifiersQuery(SharedSessionContractImplementor session);
-
-	Query<E> createLoadingQuery(SessionImplementor session, String idParameterName);
-
+	void loadIndex(MassIndexingTypeIndexer<E, I> indexer);
 }

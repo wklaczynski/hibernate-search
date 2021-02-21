@@ -142,7 +142,7 @@ public class PojoMapper<MPBS extends MappingPartialBuildState> implements Mapper
 	}
 
 	@Override
-	public void prepareIndexedTypes(Consumer<Optional<String>> backendNameCollector) {
+	public void prepareIndexedTypes(Consumer<Optional<String>> backendNameCollector, Consumer<Optional<String>> loaderNameCollector) {
 		Collection<? extends MappableTypeModel> encounteredTypes = contributorProvider.typesContributedTo();
 		for ( MappableTypeModel mappableTypeModel : encounteredTypes ) {
 			try {
@@ -154,7 +154,7 @@ public class PojoMapper<MPBS extends MappingPartialBuildState> implements Mapper
 				}
 
 				PojoRawTypeModel<?> rawTypeModel = (PojoRawTypeModel<?>) mappableTypeModel;
-				prepareEntityOrIndexedType( rawTypeModel, backendNameCollector );
+				prepareEntityOrIndexedType( rawTypeModel, backendNameCollector, loaderNameCollector );
 			}
 			catch (RuntimeException e) {
 				failureCollector.withContext( EventContexts.fromType( mappableTypeModel ) )
@@ -166,7 +166,7 @@ public class PojoMapper<MPBS extends MappingPartialBuildState> implements Mapper
 	}
 
 	private void prepareEntityOrIndexedType(PojoRawTypeModel<?> rawTypeModel,
-			Consumer<Optional<String>> backendNameCollector) {
+			Consumer<Optional<String>> backendNameCollector, Consumer<Optional<String>> loaderNameCollector) {
 		PojoTypeAdditionalMetadata metadata = typeAdditionalMetadataProvider.get( rawTypeModel );
 
 		if ( metadata.isEntity() ) {
@@ -181,6 +181,7 @@ public class PojoMapper<MPBS extends MappingPartialBuildState> implements Mapper
 			}
 			PojoIndexedTypeAdditionalMetadata indexedTypeMetadata = indexedTypeMetadataOptional.get();
 			backendNameCollector.accept( indexedTypeMetadata.backendName() );
+			loaderNameCollector.accept( indexedTypeMetadata.loaderName() );
 			indexedEntityTypes.add( rawTypeModel );
 		}
 	}
@@ -212,7 +213,7 @@ public class PojoMapper<MPBS extends MappingPartialBuildState> implements Mapper
 		String indexName = indexedTypeMetadata.indexName().orElse( entityName );
 
 		MappedIndexManagerBuilder indexManagerBuilder = indexManagerFactory.createMappedIndexManager( this,
-				indexedTypeMetadata.backendName(), indexName, entityName, multiTenancyEnabled );
+				indexedTypeMetadata.backendName(), indexedTypeMetadata.loaderName(), indexName, entityName, multiTenancyEnabled );
 
 		Optional<RoutingBinder> routingBinderOptional = indexedTypeMetadata.routingBinder();
 		BoundRoutingBridge<E> routingBridge = null;

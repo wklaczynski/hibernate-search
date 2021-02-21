@@ -14,6 +14,7 @@ import org.hibernate.search.engine.environment.classpath.spi.ServiceResolver;
 import org.hibernate.search.engine.mapper.mapping.building.spi.MappingInitiator;
 import org.hibernate.search.engine.mapper.mapping.building.spi.MappingKey;
 import org.hibernate.search.engine.mapper.mapping.building.spi.MappingPartialBuildState;
+import org.hibernate.search.engine.search.loading.spi.EntityLoadingFactory;
 
 
 public interface SearchIntegrationBuilder {
@@ -27,6 +28,8 @@ public interface SearchIntegrationBuilder {
 	SearchIntegrationBuilder serviceResolver(ServiceResolver serviceResolver);
 
 	SearchIntegrationBuilder beanManagerBeanProvider(BeanProvider beanProvider);
+
+	SearchIntegrationBuilder entityLoadingFactoryType(Class<? extends EntityLoadingFactory> entityLoadingFactoryType);
 
 	<PBM extends MappingPartialBuildState> SearchIntegrationBuilder addMappingInitiator(
 			MappingKey<PBM, ?> mappingKey, MappingInitiator<?, PBM> initiator);
