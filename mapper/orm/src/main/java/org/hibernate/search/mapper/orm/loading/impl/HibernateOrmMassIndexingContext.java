@@ -27,8 +27,8 @@ import org.hibernate.search.mapper.pojo.massindexing.spi.MassIndexingSessionCont
 public final class HibernateOrmMassIndexingContext implements MassIndexingContext<HibernateOrmMassIndexingOptions> {
 	private final HibernateOrmMassIndexingMappingContext mappingContext;
 	private final HibernateOrmSessionTypeContextProvider typeContextProvider;
-	private final List<LoadingInterceptor> identifierProducerInterceptors = new ArrayList<>();
-	private final List<LoadingInterceptor> documentProducerInterceptors = new ArrayList<>();
+	private final List<LoadingInterceptor<?>> identifierProducerInterceptors = new ArrayList<>();
+	private final List<LoadingInterceptor<?>> documentProducerInterceptors = new ArrayList<>();
 
 	public HibernateOrmMassIndexingContext(HibernateOrmMassIndexingMappingContext mappingContext,
 			HibernateOrmSessionTypeContextProvider typeContextContainer) {
@@ -44,7 +44,7 @@ public final class HibernateOrmMassIndexingContext implements MassIndexingContex
 	}
 
 	@Override
-	public <T> HibernateOrmJpaMassIndexingTypeLoadingStrategy<? super T, ?> createIndexLoadingStrategy(
+	public <T> HibernateOrmJpaMassIndexingTypeLoadingStrategy<T> createIndexLoadingStrategy(
 			PojoRawTypeIdentifier<? extends T> expectedType) {
 		SessionFactoryImplementor sessionFactory = mappingContext.sessionFactory();
 
@@ -52,9 +52,9 @@ public final class HibernateOrmMassIndexingContext implements MassIndexingContex
 		EntityPersister entityPersister = typeContext.entityPersister();
 
 		EntityPersister rootEntityPersister = HibernateOrmUtils.toRootEntityType( sessionFactory, entityPersister );
-		TypeQueryFactory<?, ?> queryFactory = TypeQueryFactory.create( sessionFactory, rootEntityPersister,
+		TypeQueryFactory<T, ?> queryFactory = (TypeQueryFactory<T, ?>) TypeQueryFactory.create( sessionFactory, rootEntityPersister,
 				entityPersister.getIdentifierPropertyName() );
-		return new HibernateOrmJpaMassIndexingTypeLoadingStrategy( mappingContext,
+		return new HibernateOrmJpaMassIndexingTypeLoadingStrategy<>(
 				typeContextProvider, sessionFactory,
 				rootEntityPersister, queryFactory );
 	}
@@ -65,7 +65,6 @@ public final class HibernateOrmMassIndexingContext implements MassIndexingContex
 		return typeContext.jpaEntityName();
 	}
 
-	@Override
 	public Object entityIdentifier(MassIndexingSessionContext sessionContext,
 			PojoRawTypeIdentifier<?> commonSuperType, Object entity) {
 		Session session = ((HibernateOrmMassIndexingSessionContext) sessionContext).session();
@@ -73,7 +72,7 @@ public final class HibernateOrmMassIndexingContext implements MassIndexingContex
 	}
 
 	@Override
-	public boolean testIndexedEntity(MassIndexingSessionContext sessionContext, PojoRawTypeIdentifier<?> commonSuperType, Object entity) {
+	public boolean indexedInstance(MassIndexingSessionContext sessionContext, PojoRawTypeIdentifier<?> commonSuperType, Object entity) {
 		return true;
 	}
 
