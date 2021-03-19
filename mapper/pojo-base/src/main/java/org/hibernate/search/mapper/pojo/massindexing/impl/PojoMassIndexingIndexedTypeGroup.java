@@ -112,10 +112,7 @@ public class PojoMassIndexingIndexedTypeGroup<E> {
 	}
 
 	public boolean includesInstance(Object entity, MassIndexingSessionContext sessionContext) {
-		if ( !commonSuperType.javaClass().isAssignableFrom( entity.getClass() ) ) {
-			return false;
-		}
-		return indexingContext.indexedInstance( sessionContext, commonSuperType, entity );
+		return includedTypes.contains( sessionContext.runtimeIntrospector().detectEntityType( entity ) );
 	}
 
 	public Object extractReferenceOrSuppress(MassIndexingSessionContext sessionContext, Object entity, Throwable throwable) {

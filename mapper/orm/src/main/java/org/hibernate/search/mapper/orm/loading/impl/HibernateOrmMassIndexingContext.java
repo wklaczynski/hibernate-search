@@ -72,11 +72,6 @@ public final class HibernateOrmMassIndexingContext implements MassIndexingContex
 	}
 
 	@Override
-	public boolean indexedInstance(MassIndexingSessionContext sessionContext, PojoRawTypeIdentifier<?> commonSuperType, Object entity) {
-		return true;
-	}
-
-	@Override
 	public Object extractReferenceOrSuppress(MassIndexingSessionContext sessionContext,
 			PojoRawTypeIdentifier<?> commonSuperType, Object entity, Throwable throwable) {
 		String entityName = entityName( commonSuperType );

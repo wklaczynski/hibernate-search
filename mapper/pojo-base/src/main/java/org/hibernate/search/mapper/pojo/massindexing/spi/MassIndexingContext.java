@@ -43,15 +43,6 @@ public interface MassIndexingContext<O> {
 	/**
 	 * @param sessionContext the session context
 	 * @param commonSuperType The super type of loaded objects.
-	 * @param entity the loaded entity
-	 * @return A true is entity is indexed instance type.
-	 */
-	boolean indexedInstance(MassIndexingSessionContext sessionContext,
-			PojoRawTypeIdentifier<?> commonSuperType, Object entity);
-
-	/**
-	 * @param sessionContext the session context
-	 * @param commonSuperType The super type of loaded objects.
 	 * @param entity the entity
 	 * @param throwable the throwable
 	 * @return A object entity reference.

@@ -91,14 +91,6 @@ public final class JavaBeanSearchLoadingContext implements PojoLoadingContext, M
 		return typeContext.entityName();
 	}
 
-	@Override
-	public boolean indexedInstance(MassIndexingSessionContext sessionContext,
-			PojoRawTypeIdentifier<?> commonSuperType, Object entity) {
-		PojoRawTypeIdentifier<?> targetType = sessionContext.runtimeIntrospector().detectEntityType( entity );
-		LoadingTypeContext<?> typeContext = typeContextProvider.indexedForExactType( targetType );
-		return typeContext != null;
-	}
-
 	private Object entityIdentifier(MassIndexingSessionContext sessionContext, Object entity) {
 		PojoRawTypeIdentifier<?> targetType = sessionContext.runtimeIntrospector().detectEntityType( entity );
 		LoadingTypeContext<?> typeContext = typeContextProvider.indexedForExactType( targetType );
